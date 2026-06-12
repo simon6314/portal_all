@@ -1,14 +1,71 @@
-// Application logic for Simon's Web Apps Integration Portal
+// Global Error Catching for Troubleshooting
+window.onerror = function(message, source, lineno, colno, error) {
+  alert("偵測到網頁錯誤：\n訊息: " + message + "\n來源: " + source + "\n行號: " + lineno);
+  return false;
+};
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Safe Storage wrapper to handle browser security blocks (e.g., incognito or iframe restriction)
+  const safeStorage = {
+    _inMemory: {},
+    _inMemorySession: {},
+    getItem(key, fallback = null) {
+      try {
+        return localStorage.getItem(key) || fallback;
+      } catch (e) {
+        return this._inMemory[key] || fallback;
+      }
+    },
+    setItem(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        this._inMemory[key] = value;
+      }
+    },
+    getSessionItem(key, fallback = null) {
+      try {
+        return sessionStorage.getItem(key) || fallback;
+      } catch (e) {
+        return this._inMemorySession[key] || fallback;
+      }
+    },
+    setSessionItem(key, value) {
+      try {
+        sessionStorage.setItem(key, value);
+      } catch (e) {
+        this._inMemorySession[key] = value;
+      }
+    },
+    removeSessionItem(key) {
+      try {
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        delete this._inMemorySession[key];
+      }
+    }
+  };
+
+  // Check if CONFIG exists
+  if (typeof CONFIG === 'undefined') {
+    alert("錯誤：無法載入設定檔 config.js。請確認該檔案與 index.html 置於同一個資料夾。");
+    return;
+  }
+
   // ==========================================
   // 1. Core State Management
   // ==========================================
   let activeAppId = null;
   let targetAppIdToUnlock = null;
   
-  // Load unlocked apps list from sessionStorage (locks reset when tab closes)
-  let unlockedApps = new Set(JSON.parse(sessionStorage.getItem("unlocked_apps") || "[]"));
+  // Load unlocked apps list from sessionStorage (safely)
+  let unlockedApps;
+  try {
+    unlockedApps = new Set(JSON.parse(safeStorage.getSessionItem("unlocked_apps", "[]")));
+  } catch (e) {
+    console.error("Failed to parse unlocked apps:", e);
+    unlockedApps = new Set();
+  }
 
   // DOM Elements - Navigation & Shell
   const body = document.body;
@@ -57,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   // 2. Initialize Page Themes
   // ==========================================
-  const savedTheme = localStorage.getItem("portal_theme") || "dark";
+  const savedTheme = safeStorage.getItem("portal_theme", "dark");
   if (savedTheme === "light") {
     body.classList.remove("theme-dark");
     body.classList.add("theme-light");
@@ -69,10 +126,10 @@ document.addEventListener("DOMContentLoaded", () => {
   themeToggleBtn.addEventListener("click", () => {
     if (body.classList.contains("theme-dark")) {
       body.classList.replace("theme-dark", "theme-light");
-      localStorage.setItem("portal_theme", "light");
+      safeStorage.setItem("portal_theme", "light");
     } else {
       body.classList.replace("theme-light", "theme-dark");
-      localStorage.setItem("portal_theme", "dark");
+      safeStorage.setItem("portal_theme", "dark");
     }
   });
 
@@ -331,7 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (enteredKeyHash === app.keywordHash) {
       // Unlocked successfully!
       unlockedApps.add(app.id);
-      sessionStorage.setItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
+      safeStorage.setSessionItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
       
       closeUnlockModal();
       loadAppInIframe(app);
@@ -369,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   lockAllBtn.addEventListener("click", () => {
     unlockedApps.clear();
-    sessionStorage.removeItem("unlocked_apps");
+    safeStorage.removeSessionItem("unlocked_apps");
     
     // If we locked the currently active app, go back to dashboard
     if (activeAppId) {
