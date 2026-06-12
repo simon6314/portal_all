@@ -306,8 +306,17 @@ document.addEventListener("DOMContentLoaded", () => {
   modalCloseBtn.addEventListener("click", closeUnlockModal);
   modalCancelBtn.addEventListener("click", closeUnlockModal);
   
-  // Submit verification form
-  passwordForm.addEventListener("submit", (e) => {
+  // Helper to hash string using SHA-256
+  async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  }
+  
+  // Submit verification form (Async for SHA-256 hashing)
+  passwordForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!targetAppIdToUnlock) return;
 
@@ -316,7 +325,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const enteredKey = passcodeInput.value.trim();
     
-    if (enteredKey === app.keyword) {
+    // Hash the entered key
+    const enteredKeyHash = await sha256(enteredKey);
+    
+    if (enteredKeyHash === app.keywordHash) {
       // Unlocked successfully!
       unlockedApps.add(app.id);
       sessionStorage.setItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));

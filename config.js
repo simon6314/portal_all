@@ -34,7 +34,7 @@ const CONFIG = {
       title: "伴侶心情",
       url: "https://simon6314.github.io/mind_analysis/",
       isPublic: false,
-      keyword: "fox260801", // Modify this to change the access passcode
+      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "心靈特質與情緒分析系統",
       icon: "🧠"
     },
@@ -43,7 +43,7 @@ const CONFIG = {
       title: "美食地圖",
       url: "https://simon6314.github.io/food_map/",
       isPublic: false,
-      keyword: "fox260801", // Modify this to change the access passcode
+      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "個人美食足跡與推薦餐廳地圖",
       icon: "🍔"
     },
@@ -52,7 +52,7 @@ const CONFIG = {
       title: "共同帳戶",
       url: "https://simon6314.github.io/share-expense/index.html",
       isPublic: false,
-      keyword: "fox260801", // Modify this to change the access passcode
+      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "多人分攤帳目與記帳管理工具",
       icon: "💸"
     },
@@ -61,7 +61,7 @@ const CONFIG = {
       title: "蜜月行程",
       url: "https://simon6314.github.io/canada_honeymoon/",
       isPublic: false,
-      keyword: "fox260801", // Modify this to change the access passcode
+      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "加拿大蜜月行前規劃與精彩行程紀錄",
       icon: "🍁"
     }
