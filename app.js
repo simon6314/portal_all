@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // DOM Elements - Navigation & Shell
   const body = document.body;
   const menuToggleBtn = document.getElementById("menuToggleBtn");
-  const backBtn = document.getElementById("backBtn");
+  const homeBtn = document.getElementById("homeBtn");
   const headerRightActions = document.getElementById("headerRightActions");
   const navDrawer = document.getElementById("navDrawer");
   const drawerScrim = document.getElementById("drawerScrim");
@@ -186,8 +186,8 @@ document.addEventListener("DOMContentLoaded", () => {
     headerLogo.textContent = app.icon;
     
     // Toggle header actions for active app view
-    menuToggleBtn.style.display = "none";
-    backBtn.style.display = "flex";
+    menuToggleBtn.style.display = "flex"; // Keep menu button visible
+    homeBtn.style.display = "flex"; // Show home button
     headerRightActions.style.display = "flex";
 
     // Show loading spinner and set src
@@ -210,8 +210,8 @@ document.addEventListener("DOMContentLoaded", () => {
     headerLogo.textContent = "🧠";
     
     // Toggle header actions for dashboard view
-    menuToggleBtn.style.display = "flex";
-    backBtn.style.display = "none";
+    menuToggleBtn.style.display = "flex"; // Keep menu button visible
+    homeBtn.style.display = "none"; // Hide home button
     headerRightActions.style.display = "none";
     
     renderAppLists();
@@ -243,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  backBtn.addEventListener("click", returnToDashboard);
+  homeBtn.addEventListener("click", returnToDashboard);
 
 
   // ==========================================
