@@ -2,12 +2,12 @@
 const CONFIG = {
   // App Title displayed on the header
   portalTitle: "Simon's Hub",
-  
+
   // List of integrated web applications
   apps: [
     {
       id: "wranb_monitor",
-      title: "WRANB Monitor",
+      title: "水庫水情",
       url: "https://simon6314.github.io/wranb_monitor/",
       isPublic: true,
       description: "即時系統監控與數據分析儀表板",
@@ -15,7 +15,7 @@ const CONFIG = {
     },
     {
       id: "real_weather",
-      title: "Real Weather",
+      title: "即時天氣",
       url: "https://simon6314.github.io/real_weather/",
       isPublic: true,
       description: "在地即時氣象與天氣預報查詢",
@@ -23,7 +23,7 @@ const CONFIG = {
     },
     {
       id: "stock_etf",
-      title: "Stock ETF",
+      title: "即時股市",
       url: "https://simon6314.github.io/stock_etf/",
       isPublic: true,
       description: "股票、ETF 市場走勢分析與追蹤工具",
@@ -31,37 +31,37 @@ const CONFIG = {
     },
     {
       id: "mind_analysis",
-      title: "Mind Analysis",
+      title: "伴侶心情",
       url: "https://simon6314.github.io/mind_analysis/",
       isPublic: false,
-      keyword: "mind123", // Modify this to change the access passcode
+      keyword: "fox260801", // Modify this to change the access passcode
       description: "心靈特質與情緒分析系統",
       icon: "🧠"
     },
     {
       id: "food_map",
-      title: "Food Map",
+      title: "美食地圖",
       url: "https://simon6314.github.io/food_map/",
       isPublic: false,
-      keyword: "food123", // Modify this to change the access passcode
+      keyword: "fox260801", // Modify this to change the access passcode
       description: "個人美食足跡與推薦餐廳地圖",
       icon: "🍔"
     },
     {
       id: "share-expense",
-      title: "Share Expense",
+      title: "共同帳戶",
       url: "https://simon6314.github.io/share-expense/index.html",
       isPublic: false,
-      keyword: "expense123", // Modify this to change the access passcode
+      keyword: "fox260801", // Modify this to change the access passcode
       description: "多人分攤帳目與記帳管理工具",
       icon: "💸"
     },
     {
       id: "canada_honeymoon",
-      title: "Canada Honeymoon",
+      title: "蜜月行程",
       url: "https://simon6314.github.io/canada_honeymoon/",
       isPublic: false,
-      keyword: "honeymoon123", // Modify this to change the access passcode
+      keyword: "fox260801", // Modify this to change the access passcode
       description: "加拿大蜜月行前規劃與精彩行程紀錄",
       icon: "🍁"
     }

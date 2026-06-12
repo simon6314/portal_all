@@ -13,7 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // DOM Elements - Navigation & Shell
   const body = document.body;
   const menuToggleBtn = document.getElementById("menuToggleBtn");
-  const homeBtn = document.getElementById("homeBtn");
+  const backBtn = document.getElementById("backBtn");
+  const headerRightActions = document.getElementById("headerRightActions");
   const navDrawer = document.getElementById("navDrawer");
   const drawerScrim = document.getElementById("drawerScrim");
   const drawerCloseBtn = document.getElementById("drawerCloseBtn");
@@ -35,11 +36,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const appIframe = document.getElementById("appIframe");
   const iframeLoader = document.getElementById("iframeLoader");
   
-  const activeAppIcon = document.getElementById("activeAppIcon");
-  const activeAppName = document.getElementById("activeAppName");
+  // Header Iframe Actions
   const iframeReloadBtn = document.getElementById("iframeReloadBtn");
   const iframeExternalBtn = document.getElementById("iframeExternalBtn");
-  const iframeCloseBtn = document.getElementById("iframeCloseBtn");
+
 
   // DOM Elements - Modal Dialog
   const passwordModal = document.getElementById("passwordModal");
@@ -181,14 +181,14 @@ document.addEventListener("DOMContentLoaded", () => {
     dashboardSection.style.display = "none";
     iframeSection.style.display = "flex";
     
-    // Set up iframe details
-    activeAppName.textContent = app.title;
-    activeAppIcon.textContent = app.icon;
-    
     // Update top header display
     headerTitle.textContent = app.title;
     headerLogo.textContent = app.icon;
-    homeBtn.style.visibility = "visible";
+    
+    // Toggle header actions for active app view
+    menuToggleBtn.style.display = "none";
+    backBtn.style.display = "flex";
+    headerRightActions.style.display = "flex";
 
     // Show loading spinner and set src
     iframeLoader.classList.remove("hidden");
@@ -208,7 +208,11 @@ document.addEventListener("DOMContentLoaded", () => {
     
     headerTitle.textContent = CONFIG.portalTitle;
     headerLogo.textContent = "🧠";
-    homeBtn.style.visibility = "hidden";
+    
+    // Toggle header actions for dashboard view
+    menuToggleBtn.style.display = "flex";
+    backBtn.style.display = "none";
+    headerRightActions.style.display = "none";
     
     renderAppLists();
   }
@@ -221,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Action Buttons inside Iframe Toolbar
+  // Action Buttons inside Top Header
   iframeReloadBtn.addEventListener("click", () => {
     if (activeAppId) {
       iframeLoader.classList.remove("hidden");
@@ -239,8 +243,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  iframeCloseBtn.addEventListener("click", returnToDashboard);
-  homeBtn.addEventListener("click", returnToDashboard);
+  backBtn.addEventListener("click", returnToDashboard);
+
 
   // ==========================================
   // 5. Drawer (Navigation) Mechanics

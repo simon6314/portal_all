@@ -20,21 +20,38 @@
 
   <!-- Top Navigation Header -->
   <header class="app-header" id="appHeader">
-    <button class="icon-btn" id="menuToggleBtn" aria-label="打開選單" title="選單">
-      <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
-        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
-      </svg>
-    </button>
+    <div class="header-left">
+      <button class="icon-btn" id="menuToggleBtn" aria-label="打開選單" title="選單">
+        <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
+          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="backBtn" aria-label="回到首頁" title="回首頁" style="display: none;">
+        <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    
     <div class="header-center">
       <span class="header-logo" id="headerLogo">🧠</span>
       <h1 class="header-title" id="headerTitle">Simon's Hub</h1>
     </div>
-    <button class="icon-btn" id="homeBtn" aria-label="回到首頁" title="回首頁" style="visibility: hidden;">
-      <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
-        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/>
-      </svg>
-    </button>
+    
+    <div class="header-right" id="headerRightActions" style="display: none;">
+      <button class="header-action-btn" id="iframeReloadBtn" aria-label="重新整理頁面" title="重新整理">
+        <svg class="icon" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="header-action-btn" id="iframeExternalBtn" aria-label="在新分頁開啟" title="在新分頁開啟">
+        <svg class="icon" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
   </header>
+
 
   <!-- Side Navigation Drawer -->
   <aside class="drawer" id="navDrawer" aria-hidden="true">
@@ -110,33 +127,9 @@
 
     <!-- 2. Iframe Content Viewer Section -->
     <section class="iframe-section" id="iframeSection" style="display: none;">
-      <!-- Toolbar placed at the top for quick web controls -->
-      <div class="iframe-toolbar" id="iframeToolbar">
-        <div class="toolbar-left">
-          <span class="active-app-icon" id="activeAppIcon"></span>
-          <span class="active-app-name" id="activeAppName">App Title</span>
-        </div>
-        <div class="toolbar-actions">
-          <button class="toolbar-btn" id="iframeReloadBtn" aria-label="重新整理頁面" title="重新整理">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn" id="iframeExternalBtn" aria-label="在新分頁開啟" title="在新分頁開啟">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" fill="currentColor"/>
-            </svg>
-          </button>
-          <button class="toolbar-btn close-app-btn" id="iframeCloseBtn" aria-label="關閉應用程式" title="回首頁">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      
       <!-- Scrollable iframe container wrapper -->
       <div class="iframe-wrapper">
+
         <iframe id="appIframe" class="app-iframe" src="" loading="lazy"></iframe>
         
         <!-- Premium glassmorphic loading spinner -->
