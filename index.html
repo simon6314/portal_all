@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Simon's Web Apps Portal - 一站式整合個人開發的各項 Web 應用程式，支援行動端最佳化與關鍵字安全存取。">
+  <title>Simon's Hub - 個人應用整合入口</title>
+  
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+
+  <!-- Top Navigation Header -->
+  <header class="app-header" id="appHeader">
+    <button class="icon-btn" id="menuToggleBtn" aria-label="打開選單" title="選單">
+      <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
+        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
+      </svg>
+    </button>
+    <div class="header-center">
+      <span class="header-logo" id="headerLogo">🧠</span>
+      <h1 class="header-title" id="headerTitle">Simon's Hub</h1>
+    </div>
+    <button class="icon-btn" id="homeBtn" aria-label="回到首頁" title="回首頁" style="visibility: hidden;">
+      <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Side Navigation Drawer -->
+  <aside class="drawer" id="navDrawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-branding">
+        <span class="branding-logo">🚀</span>
+        <span class="branding-text">Simon's Hub</span>
+      </div>
+      <button class="icon-btn close-btn" id="drawerCloseBtn" aria-label="關閉選單">
+        <svg class="icon" viewBox="0 0 24 24" width="24" height="24">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+    
+    <nav class="drawer-nav">
+      <div class="nav-section-title">公開應用程式 (Public)</div>
+      <ul class="nav-list" id="publicNavList">
+        <!-- Rendered dynamically by app.js -->
+      </ul>
+      
+      <div class="nav-section-title">限權應用程式 (Restricted)</div>
+      <ul class="nav-list" id="restrictedNavList">
+        <!-- Rendered dynamically by app.js -->
+      </ul>
+    </nav>
+
+    <!-- Drawer Footer Actions -->
+    <div class="drawer-footer">
+      <div class="theme-switch-wrapper">
+        <span class="footer-label">主題模式</span>
+        <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="切換主題">
+          <span class="theme-icon icon-light">☀️</span>
+          <span class="theme-icon icon-dark">🌙</span>
+        </button>
+      </div>
+      <button class="lock-all-btn" id="lockAllBtn" style="display: none;">
+        <svg viewBox="0 0 24 24" width="16" height="16">
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" fill="currentColor"/>
+        </svg>
+        重新鎖定所有 App
+      </button>
+    </div>
+  </aside>
+  
+  <!-- Scrim overlay when drawer is open -->
+  <div class="drawer-scrim" id="drawerScrim" aria-hidden="true"></div>
+
+  <!-- Main Portal Screen -->
+  <main class="main-container" id="mainContainer">
+    
+    <!-- 1. Dashboard Landing Section -->
+    <section class="dashboard-section" id="dashboardSection">
+      <div class="hero-banner">
+        <h2 class="hero-title">歡迎來到個人首頁</h2>
+        <p class="hero-subtitle">在此快速切換與瀏覽您的各項 Web 服務</p>
+      </div>
+
+      <div class="dashboard-group">
+        <h3 class="group-title">公開服務 (Public Sites)</h3>
+        <div class="grid-layout" id="publicGrid">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+      </div>
+
+      <div class="dashboard-group">
+        <h3 class="group-title">內部工具 (Private Sites)</h3>
+        <div class="grid-layout" id="restrictedGrid">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Iframe Content Viewer Section -->
+    <section class="iframe-section" id="iframeSection" style="display: none;">
+      <!-- Toolbar placed at the top for quick web controls -->
+      <div class="iframe-toolbar" id="iframeToolbar">
+        <div class="toolbar-left">
+          <span class="active-app-icon" id="activeAppIcon"></span>
+          <span class="active-app-name" id="activeAppName">App Title</span>
+        </div>
+        <div class="toolbar-actions">
+          <button class="toolbar-btn" id="iframeReloadBtn" aria-label="重新整理頁面" title="重新整理">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn" id="iframeExternalBtn" aria-label="在新分頁開啟" title="在新分頁開啟">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="toolbar-btn close-app-btn" id="iframeCloseBtn" aria-label="關閉應用程式" title="回首頁">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Scrollable iframe container wrapper -->
+      <div class="iframe-wrapper">
+        <iframe id="appIframe" class="app-iframe" src="" loading="lazy"></iframe>
+        
+        <!-- Premium glassmorphic loading spinner -->
+        <div class="iframe-loader" id="iframeLoader">
+          <div class="spinner-spinner"></div>
+          <span class="loader-text">載入服務中...</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Keyword Authorization Modal Dialog -->
+  <div class="modal-overlay" id="passwordModal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-wrapper">
+          <span class="modal-icon" id="modalAppIcon">🧠</span>
+          <h4 class="modal-title" id="modalTitle">輸入關鍵字驗證</h4>
+        </div>
+        <button class="icon-btn" id="modalCloseBtn" aria-label="關閉對話框">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      
+      <form id="passwordForm" autocomplete="off" onsubmit="return false;">
+        <p class="modal-prompt">此為受保護的內部工具，請輸入存取關鍵字 (Passcode)：</p>
+        
+        <div class="input-wrapper">
+          <input type="password" id="passcodeInput" placeholder="請輸入關鍵字" autocomplete="off" required>
+          <button type="button" class="password-toggle" id="passwordToggleBtn" aria-label="顯示密碼">
+            <!-- Eye icon -->
+            <svg class="eye-icon" viewBox="0 0 24 24" width="20" height="20" id="eyeIcon">
+              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="error-msg" id="passwordErrorMsg" role="alert" style="display: none;">關鍵字不正確，請重新輸入！</div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="modalCancelBtn">取消</button>
+          <button type="submit" class="btn btn-primary" id="modalSubmitBtn">解鎖存取</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
