@@ -249,7 +249,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Show loading spinner and set src
     iframeLoader.classList.remove("hidden");
-    appIframe.src = app.url;
+    
+    // Append dynamic cache-buster to the URL to bypass aggressive mobile/desktop iframe cache
+    try {
+      const urlObj = new URL(app.url, window.location.href);
+      urlObj.searchParams.set("pb", Date.now());
+      appIframe.src = urlObj.toString();
+    } catch (e) {
+      console.error("Error loading app in iframe:", e);
+      appIframe.src = app.url + (app.url.includes("?") ? "&" : "?") + "pb=" + Date.now();
+    }
 
     // Refresh navbar selection state
     renderAppLists();
@@ -286,8 +295,18 @@ document.addEventListener("DOMContentLoaded", () => {
   iframeReloadBtn.addEventListener("click", () => {
     if (activeAppId) {
       iframeLoader.classList.remove("hidden");
-      // Set src again to force reload
-      appIframe.src = appIframe.src;
+      const app = CONFIG.apps.find(a => a.id === activeAppId);
+      if (app) {
+        try {
+          const urlObj = new URL(app.url, window.location.href);
+          urlObj.searchParams.set("pb", Date.now());
+          appIframe.src = urlObj.toString();
+        } catch (e) {
+          appIframe.src = app.url + (app.url.includes("?") ? "&" : "?") + "pb=" + Date.now();
+        }
+      } else {
+        appIframe.src = appIframe.src;
+      }
     }
   });
 
@@ -295,7 +314,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeAppId) {
       const app = CONFIG.apps.find(a => a.id === activeAppId);
       if (app) {
-        window.open(app.url, "_blank");
+        try {
+          const urlObj = new URL(app.url, window.location.href);
+          urlObj.searchParams.set("pb", Date.now());
+          window.open(urlObj.toString(), "_blank");
+        } catch (e) {
+          window.open(app.url + (app.url.includes("?") ? "&" : "?") + "pb=" + Date.now(), "_blank");
+        }
       }
     }
   });
