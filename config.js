@@ -16,7 +16,7 @@ const CONFIG = {
     {
       id: "real_weather",
       title: "即時天氣",
-      url: "https://simon6314.github.io/real_weather/?v=120",
+      url: "https://simon6314.github.io/real_weather/?v=123",
       isPublic: true,
       description: "在地即時氣象與天氣預報查詢",
       icon: "☀️"
