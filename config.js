@@ -24,7 +24,7 @@ const CONFIG = {
     {
       id: "stock_etf",
       title: "即時股市",
-      url: "https://simon6314.github.io/stock_etf/?v=20260616_1",
+      url: "https://simon6314.github.io/stock_etf/?v=20260616_2",
       isPublic: true,
       description: "股票、ETF 市場走勢分析與追蹤工具",
       icon: "📈"
