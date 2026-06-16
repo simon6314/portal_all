@@ -50,7 +50,7 @@ const CONFIG = {
     {
       id: "share-expense",
       title: "共同帳戶",
-      url: "https://simon6314.github.io/share-expense/index.html",
+      url: "https://simon6314.github.io/share-expense/index.html?v=20260616",
       isPublic: false,
       keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "多人分攤帳目與記帳管理工具",
