@@ -466,7 +466,47 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==========================================
-  // 8. Start Rendering Initial State
+  // 8. URL Keyword Auto-Unlock
   // ==========================================
-  renderAppLists();
+  async function checkUrlKeyword() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlKeyword = urlParams.get('key') || urlParams.get('keyword');
+    if (urlKeyword) {
+      const trimmedKey = urlKeyword.trim();
+      const hash = await sha256(trimmedKey);
+      
+      let unlockedAny = false;
+      CONFIG.apps.forEach(app => {
+        if (!app.isPublic && app.keywordHash === hash) {
+          unlockedApps.add(app.id);
+          unlockedAny = true;
+        }
+      });
+      
+      if (unlockedAny) {
+        // Save to session storage
+        safeStorage.setSessionItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
+        
+        // Clean the keyword from URL parameters to avoid accidental sharing or leakage
+        try {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('key');
+          newUrl.searchParams.delete('keyword');
+          window.history.replaceState({}, document.title, newUrl.toString());
+        } catch (e) {
+          console.error("Failed to clean URL parameter:", e);
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // 9. Start Initialization Flow
+  // ==========================================
+  async function init() {
+    await checkUrlKeyword();
+    renderAppLists();
+  }
+
+  init();
 });
