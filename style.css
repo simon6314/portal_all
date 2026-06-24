@@ -590,7 +590,9 @@ body.theme-light .theme-toggle-btn::after {
 }
 
 .app-iframe {
-  width: 100%;
+  width: 1px;
+  min-width: 100%;
+  max-width: 100%;
   height: 100%;
   border: none;
   display: block;
