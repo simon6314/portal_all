@@ -16,7 +16,7 @@ const CONFIG = {
     {
       id: "real_weather",
       title: "即時天氣",
-      url: "https://simon6314.github.io/real_weather/?v=123",
+      url: "https://simon6314.github.io/real_weather/?v=20260910_1142",
       isPublic: true,
       description: "在地即時氣象與天氣預報查詢",
       icon: "☀️"
@@ -59,9 +59,8 @@ const CONFIG = {
     {
       id: "canada_honeymoon",
       title: "蜜月行程",
-      url: "https://simon6314.github.io/canada_honeymoon/",
-      isPublic: false,
-      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
+      url: "./honeymoon/index.html",
+      isPublic: true,
       description: "加拿大蜜月行前規劃與精彩行程紀錄",
       icon: "🍁"
     },
@@ -84,15 +83,6 @@ const CONFIG = {
       keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "導師期末評語 AI 生成器，支援一鍵點選常用標籤與同步寫回 Google 試算表。",
       icon: "✍️"
-    },
-    {
-      id: "exercis_encourage",
-      title: "體態與運動激勵",
-      url: "https://simon6314.github.io/exercis_encourage/index.html",
-      isPublic: false,
-      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
-      description: "結合 AI 估算、科學體態預測、Google Sheets 同步與動態激勵機制的健身看板。",
-      icon: "⚡"
     }
   ]
 };
