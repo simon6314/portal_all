@@ -60,7 +60,8 @@ const CONFIG = {
       id: "canada_honeymoon",
       title: "蜜月行程",
       url: "./honeymoon/index.html",
-      isPublic: true,
+      isPublic: false,
+      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
       description: "加拿大蜜月行前規劃與精彩行程紀錄",
       icon: "🍁"
     },
