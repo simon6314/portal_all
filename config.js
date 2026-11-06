@@ -75,17 +75,6 @@ const CONFIG = {
       icon: "🍁"
     },
     {
-      id: "photo_compare_storage",
-      title: "雲端相簿與比對",
-      url: "https://simon6314.github.io/photo_compare_storage/index.html",
-      isPublic: false,
-      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
-      gasUrl: "https://script.google.com/macros/s/AKfycbwdEc2oEcYV_EMiJg5tRC-kyKzCjuayaVDY9dcEIuhdW9WGKBn8peDaW4ESz6ul2Cytag/exec",
-      folderId: "15toOQzCIVRBFd4x5C8Ao_2k1C-2yTMzA",
-      description: "個人雲端相簿空間，支援資料夾管理與重複/相似相片比對、批量刪除。",
-      icon: "🖼️"
-    },
-    {
       id: "teacher_words",
       title: "評語生成器",
       url: "https://simon6314.github.io/teacher_words/index.html",
