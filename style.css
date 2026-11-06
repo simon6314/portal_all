@@ -219,6 +219,14 @@ html, body {
   gap: 10px;
 }
 
+.branding-img {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .branding-logo {
   font-size: 1.4rem;
 }
