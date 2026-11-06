@@ -872,9 +872,10 @@ body.theme-light .theme-toggle-btn::after {
    9. Mobile Premium Glassmorphism Overrides
    ========================================== */
 @media (max-width: 768px) {
+  /* 手機上不對卡片做背景模糊：卡片在捲動容器內，每一格捲動都要重新模糊底下內容，會造成卡頓 */
   .app-card {
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.03) inset !important;
   }
   
