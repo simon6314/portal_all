@@ -418,8 +418,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const enteredKeyHash = await sha256(enteredKey);
     
     if (enteredKeyHash === app.keywordHash) {
-      // Unlocked successfully!
-      unlockedApps.add(app.id);
+      // Unlocked successfully! Every private app that uses this same keyword unlocks too
+      CONFIG.apps.forEach(a => {
+        if (!a.isPublic && a.keywordHash === app.keywordHash) unlockedApps.add(a.id);
+      });
       safeStorage.setItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
       
       closeUnlockModal();
