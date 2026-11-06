@@ -15,6 +15,10 @@
   
   <!-- CSS Stylesheet (Cache Busted v1.0.39) -->
   <link rel="stylesheet" href="style.css?v=1.0.39">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body class="theme-dark">
 
@@ -183,5 +187,8 @@
   <!-- JavaScript App Logic (Cache Busted v1.0.39) -->
   <script src="config.js?v=1.0.42"></script>
   <script src="app.js?v=1.0.39"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
 </body>
 </html>
