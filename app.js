@@ -37,6 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
         this._inMemorySession[key] = value;
       }
     },
+    removeItem(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        delete this._inMemory[key];
+      }
+    },
     removeSessionItem(key) {
       try {
         sessionStorage.removeItem(key);
@@ -58,10 +65,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeAppId = null;
   let targetAppIdToUnlock = null;
   
-  // Load unlocked apps list from sessionStorage (safely)
+  // Load unlocked apps list from localStorage (per device, stays unlocked across visits)
   let unlockedApps;
   try {
-    unlockedApps = new Set(JSON.parse(safeStorage.getSessionItem("unlocked_apps", "[]")));
+    unlockedApps = new Set(JSON.parse(safeStorage.getItem("unlocked_apps", "[]")));
   } catch (e) {
     console.error("Failed to parse unlocked apps:", e);
     unlockedApps = new Set();
@@ -413,7 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (enteredKeyHash === app.keywordHash) {
       // Unlocked successfully!
       unlockedApps.add(app.id);
-      safeStorage.setSessionItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
+      safeStorage.setItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
       
       closeUnlockModal();
       loadAppInIframe(app);
@@ -451,7 +458,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   lockAllBtn.addEventListener("click", () => {
     unlockedApps.clear();
-    safeStorage.removeSessionItem("unlocked_apps");
+    safeStorage.removeItem("unlocked_apps");
     
     // If we locked the currently active app, go back to dashboard
     if (activeAppId) {
@@ -485,7 +492,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (unlockedAny) {
         // Save to session storage
-        safeStorage.setSessionItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
+        safeStorage.setItem("unlocked_apps", JSON.stringify(Array.from(unlockedApps)));
         
         // Clean the keyword from URL parameters to avoid accidental sharing or leakage
         try {
