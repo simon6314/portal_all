@@ -509,7 +509,8 @@
     const list = tt.StopTimes.map(x => ({
       id: x.StationID,
       name: nameField(x.StationName),
-      time: x.ArrivalTime || x.DepartureTime || ''
+      time: x.ArrivalTime || x.DepartureTime || '',
+      dep: x.DepartureTime || x.ArrivalTime || ''
     }));
     stopCache.set(k, list);
     return list;
@@ -526,7 +527,8 @@
     }
     return `<div class="stops">${list.map(s => {
       const end = s.id === route.from || s.id === route.to;
-      return `<div class="stop${end ? ' end' : ''}"><span>${esc(s.name || nameOf(s.id))}</span><span>${esc(s.time)}</span></div>`;
+      const shown = s.id === route.from && s.dep ? s.dep : s.time;  // 起點站顯示發車時間
+      return `<div class="stop${end ? ' end' : ''}"><span>${esc(s.name || nameOf(s.id))}</span><span>${esc(shown)}</span></div>`;
     }).join('')}</div>`;
   }
 
