@@ -11,7 +11,7 @@ const CONFIG = {
       url: "https://simon6314.github.io/wranb_monitor/",
       isPublic: true,
       description: "即時系統監控與數據分析儀表板",
-      icon: "📊"
+      icon: "💧"
     },
     {
       id: "real_weather",
