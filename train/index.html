@@ -316,19 +316,41 @@
     if (!route) { showStatus('請先新增一條路線。'); return; }
     const key = `${route.from}-${route.to}-${todayTaipei()}`;
     if (!force && key === loadedKey) { renderTrains(); return; }
-    showStatus('載入班次中…');
+    // 有本機快取就先顯示，再背景更新
+    const cached = readTtCache(key);
+    if (cached) {
+      trains = cached;
+      loadedKey = key;
+      $('status').hidden = true;
+      renderTrains();
+    } else {
+      showStatus('載入班次中…');
+    }
     try {
       const [list, delays] = await Promise.all([fetchTrains(route), fetchDelays(route.from)]);
       list.forEach(t => { t.delay = delays.has(t.no) ? delays.get(t.no) : undefined; });
       trains = list;
       loadedKey = key;
+      writeTtCache(key, list);
       $('status').hidden = true;
       renderTrains();
     } catch (err) {
-      trains = [];
-      loadedKey = '';
-      showStatus('無法載入班次：' + err.message);
+      if (!cached) {
+        trains = [];
+        loadedKey = '';
+        showStatus('無法載入班次：' + err.message);
+      }
     }
+  }
+
+  function readTtCache(key) {
+    try {
+      const o = JSON.parse(localStorage.getItem('train_tt_' + key));
+      return Array.isArray(o) && o.length ? o : null;
+    } catch (e) { return null; }
+  }
+  function writeTtCache(key, list) {
+    try { localStorage.setItem('train_tt_' + key, JSON.stringify(list)); } catch (e) { /* ignore */ }
   }
 
   function renderTrains() {
@@ -419,14 +441,12 @@
     routes = loadRoutes();
     renderRoutes();
     $('today').textContent = todayTaipei().replace(/-/g, '/');
-    try {
-      await loadStations();
-      fillStationSelects();
-    } catch (err) {
-      $('msg').textContent = '車站清單載入失敗：' + err.message;
-    }
-    renderRoutes();
+    // 車站清單與班次同時載入，不互相等待
+    const stationsReady = loadStations()
+      .then(() => { fillStationSelects(); renderRoutes(); })
+      .catch(err => { $('msg').textContent = '車站清單載入失敗：' + err.message; });
     await loadTimetable(true);
+    await stationsReady;
     startTimers();
   }
   init();
