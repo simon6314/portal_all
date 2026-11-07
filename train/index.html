@@ -422,10 +422,10 @@
     return '<span class="delay ontime">準點</span>';
   }
 
-  // 誤點時顯示實際約到站時間
+  // 誤點時顯示實際約發車、到站時間
   function actualHtml(t) {
     if (isFuture() || !(t.delay > 0)) return '';
-    return `<div class="actual">約 ${clockOf(t.arrMin + t.delay)} 到</div>`;
+    return `<div class="actual">約 ${clockOf(t.depMin + t.delay)} 發車</div><div class="actual">約 ${clockOf(t.arrMin + t.delay)} 到</div>`;
   }
 
   function typeKey(t) {
