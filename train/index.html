@@ -55,6 +55,12 @@
     width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
   }
   .route-chip .del:hover { color: var(--danger); background: var(--line); }
+  .route-chip .mv {
+    border: 0; background: transparent; color: var(--sub); font-size: 1rem; line-height: 1;
+    width: 22px; height: 24px; border-radius: 50%; cursor: pointer;
+  }
+  .route-chip .mv:hover:not(:disabled) { color: var(--accent); background: var(--line); }
+  .route-chip .mv:disabled { opacity: 0.3; cursor: default; }
 
   .add-card {
     background: var(--card); border: 1px solid var(--line); border-radius: 16px;
@@ -254,8 +260,21 @@
     $('routes').innerHTML = routes.map((r, i) => `
       <span class="route-chip ${i === activeIndex ? 'active' : ''}" data-index="${i}" role="button" tabindex="0">
         ${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}
+        <button class="mv" data-mv="-1" data-i="${i}" type="button" aria-label="往前移" ${i === 0 ? 'disabled' : ''}>‹</button>
+        <button class="mv" data-mv="1" data-i="${i}" type="button" aria-label="往後移" ${i === routes.length - 1 ? 'disabled' : ''}>›</button>
         <button class="del" data-del="${i}" type="button" aria-label="刪除此路線">×</button>
       </span>`).join('') || '<span class="today">尚未新增路線</span>';
+  }
+
+  // 調整路線順序（與相鄰路線交換），並保留目前選取的路線
+  function moveRoute(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= routes.length) return;
+    [routes[i], routes[j]] = [routes[j], routes[i]];
+    if (activeIndex === i) activeIndex = j;
+    else if (activeIndex === j) activeIndex = i;
+    saveRoutes();
+    renderRoutes();
   }
 
   // 切換路線或新增/刪除時，回到今天、清除篩選與展開狀態
@@ -523,6 +542,8 @@
   // ---------- 事件 ----------
   $('addBtn').addEventListener('click', addRoute);
   $('routes').addEventListener('click', e => {
+    const mv = e.target.closest('[data-mv]');
+    if (mv) { e.stopPropagation(); moveRoute(Number(mv.dataset.i), Number(mv.dataset.mv)); return; }
     const del = e.target.closest('[data-del]');
     if (del) { e.stopPropagation(); deleteRoute(Number(del.dataset.del)); return; }
     const chip = e.target.closest('.route-chip[data-index]');
