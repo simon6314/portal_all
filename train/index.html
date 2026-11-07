@@ -283,8 +283,11 @@
     try {
       const res = await fetch(`${API}/tra/live?station=${encodeURIComponent(stationId)}`);
       if (!res.ok) return map;
-      const data = await res.json();
-      const rows = Array.isArray(data) ? data : (data.LiveBoards || data.Trains || []);
+      const payload = await res.json();
+      const data = payload.data || payload;
+      const rows = Array.isArray(data)
+        ? data
+        : (data.LiveTrains || data.LiveTrainDelay || data.LiveBoards || data.Trains || []);
       rows.forEach(r => {
         const no = String(r.TrainNo || '');
         const d = Number(r.DelayTime);
