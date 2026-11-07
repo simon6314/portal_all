@@ -101,6 +101,22 @@
     font-size: 0.95rem; font-weight: 600; padding: 4px 0; cursor: pointer;
   }
 
+  .daybar { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+  .daybar .step {
+    width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--text); font-size: 1.1rem; cursor: pointer;
+  }
+  .daybar .step:disabled { opacity: 0.3; cursor: default; }
+  .daybar input[type="date"] {
+    flex: 1; min-width: 0; height: 36px; padding: 0 10px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 0.95rem;
+  }
+  .daybar .today-btn {
+    height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--accent); font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  }
+  .daybar .today-btn:disabled { color: var(--sub); opacity: 0.5; cursor: default; }
+
   .types { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
   .chip {
     border: 1px solid var(--line); background: var(--card); color: var(--sub);
@@ -156,6 +172,12 @@
   </section>
 
   <div id="status" class="status">載入中…</div>
+  <section class="daybar" aria-label="選擇日期">
+    <button id="dayPrev" class="step" type="button" aria-label="前一天">‹</button>
+    <input id="dayPick" type="date" aria-label="選擇日期">
+    <button id="dayNext" class="step" type="button" aria-label="後一天">›</button>
+    <button id="dayToday" class="today-btn" type="button">今天</button>
+  </section>
   <section id="next" class="next" hidden></section>
   <section id="types" class="types" aria-label="車種篩選"></section>
   <section id="list" class="list"></section>
@@ -180,7 +202,7 @@
   let stations = [];        // { id, name }
   let routes = [];          // { from, to }
   let activeIndex = 0;
-  let dayOffset = 0;        // 0 = 今天，1 = 明天
+  let selectedDate = '';    // 目前選取的日期（YYYY-MM-DD，台灣時間）
   let trains = [];          // 目前路線、日期的班次
   let loadedKey = '';       // 目前班次對應的路線 + 日期
   let typeFilter = new Set();   // 車種篩選，空集合 = 全部
@@ -206,6 +228,18 @@
   function dateFor(offset) {
     const [y, m, d] = todayTaipei().split('-').map(Number);
     return new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10);
+  }
+  const MAX_DAYS_AHEAD = 30;
+  // 選取日期與今天相差幾天（正數為未來）
+  function dayDiff() {
+    const [ty, tm, td] = dateFor(0).split('-').map(Number);
+    const [sy, sm, sd] = selectedDate.split('-').map(Number);
+    return Math.round((Date.UTC(sy, sm - 1, sd) - Date.UTC(ty, tm - 1, td)) / 86400000);
+  }
+  function isFuture() { return dayDiff() > 0; }
+  function weekdayZh(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return ['日', '一', '二', '三', '四', '五', '六'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
   }
   function nowMinutesTaipei() {
     const parts = new Intl.DateTimeFormat('en-GB', {
@@ -279,7 +313,7 @@
 
   // 切換路線或新增/刪除時，回到今天、清除篩選與展開狀態
   function resetView() {
-    dayOffset = 0;
+    selectedDate = dateFor(0);
     typeFilter.clear();
     expanded.clear();
   }
@@ -382,7 +416,7 @@
   }
 
   function delayHtml(t) {
-    if (dayOffset) return '';                       // 明天的班次沒有即時資料
+    if (isFuture()) return '';                      // 未來日期的班次沒有即時資料
     if (t.delay === undefined || t.delay === null) return '<span class="delay nodata">無即時資料</span>';
     if (t.delay > 0) return `<span class="delay late">誤點 ${t.delay} 分</span>`;
     return '<span class="delay ontime">準點</span>';
@@ -390,7 +424,7 @@
 
   // 誤點時顯示實際約到站時間
   function actualHtml(t) {
-    if (dayOffset || !(t.delay > 0)) return '';
+    if (isFuture() || !(t.delay > 0)) return '';
     return `<div class="actual">約 ${clockOf(t.arrMin + t.delay)} 到</div>`;
   }
 
@@ -411,7 +445,8 @@
   async function loadTimetable(force) {
     const route = routes[activeIndex];
     if (!route) { showStatus('請先新增一條路線。'); return; }
-    const date = dateFor(dayOffset);
+    if (dayDiff() < 0) selectedDate = dateFor(0); // 跨日後避免停在過去的日期
+    const date = selectedDate;
     const key = `${route.from}-${route.to}-${date}`;
     if (!force && key === loadedKey) { renderTrains(); return; }
     // 有本機快取就先顯示，再背景更新
@@ -428,11 +463,11 @@
     try {
       const [list, delays] = await Promise.all([
         fetchTrains(route, date),
-        dayOffset ? Promise.resolve(new Map()) : fetchDelays()
+        isFuture() ? Promise.resolve(new Map()) : fetchDelays()
       ]);
       // 載入期間若已切換路線或日期，丟棄這次結果
       const cur = routes[activeIndex];
-      if (!cur || `${cur.from}-${cur.to}-${dateFor(dayOffset)}` !== key) return;
+      if (!cur || `${cur.from}-${cur.to}-${selectedDate}` !== key) return;
       list.forEach(t => { t.delay = delays.has(t.no) ? delays.get(t.no) : undefined; });
       const at = Date.now();
       trains = list;
@@ -468,21 +503,24 @@
 
   function renderTrains() {
     const route = routes[activeIndex];
-    const offset = dayOffset;
-    $('today').textContent = dateFor(offset).replace(/-/g, '/') + (offset ? '（明天）' : '');
+    const future = isFuture();
+    const diff = dayDiff();
+    const rel = diff === 0 ? '今天' : diff === 1 ? '明天' : diff === 2 ? '後天' : `週${weekdayZh(selectedDate)}`;
+    $('today').textContent = selectedDate.replace(/-/g, '/') + `（${rel}）`;
+    syncDayBar();
     if (!route) return;
     if (!trains.length) {
       $('next').hidden = true;
       $('types').innerHTML = '';
-      $('list').innerHTML = `<div class="empty">${offset ? '明天' : '今天'}沒有 ${esc(nameOf(route.from))} → ${esc(nameOf(route.to))} 的班次</div>`;
+      $('list').innerHTML = `<div class="empty">${future ? selectedDate.replace(/-/g, '/') : '今天'} 沒有 ${esc(nameOf(route.from))} → ${esc(nameOf(route.to))} 的班次</div>`;
       return;
     }
     renderTypes();
 
-    const now = offset ? -1 : nowMinutesTaipei();
+    const now = future ? -1 : nowMinutesTaipei();
     const visible = trains.filter(t => !typeFilter.size || typeFilter.has(typeKey(t)));
     const upcoming = visible.filter(t => t.depMin >= now && !t.suspended);
-    const prev = offset ? null : [...visible].reverse().find(t => t.depMin < now && !t.suspended);
+    const prev = future ? null : [...visible].reverse().find(t => t.depMin < now && !t.suspended);
     const nextTrain = upcoming[0];
     const nextIdx = visible.indexOf(nextTrain);
 
@@ -498,19 +536,19 @@
     if (!visible.length) {
       html += `<div class="label">沒有符合篩選的班次</div>`;
     } else if (upcoming.length) {
-      html += `<div class="label">${offset ? '明天最早三班' : '接下來三班'}</div>` + upcoming.slice(0, 3).map((t, k) => {
+      html += `<div class="label">${future ? '當日最早三班' : '接下來三班'}</div>` + upcoming.slice(0, 3).map((t, k) => {
         const wait = t.depMin - now;
         return `
         <div class="up-row${k === 0 ? ' first' : ''}">
           <div class="up-time">${esc(t.dep)} <span class="up-arr">→ ${esc(t.arr)}</span></div>
           <div class="meta">${esc(t.type)} ${esc(t.no)} 次${t.head ? ' · ' + esc(t.head) : ''} · 行車 ${esc(fmtDuration(t.duration))}</div>
-          <div class="meta">${offset ? '' : `<span class="countdown">${wait <= 0 ? '即將發車' : `還有 ${wait} 分鐘`}</span> `}${delayHtml(t)}</div>
+          <div class="meta">${future ? '' : `<span class="countdown">${wait <= 0 ? '即將發車' : `還有 ${wait} 分鐘`}</span> `}${delayHtml(t)}</div>
           ${actualHtml(t)}
         </div>`;
       }).join('');
     } else {
-      html += `<div class="label">${offset ? '明天' : '今天'}已無班次</div>`;
-      if (!offset) html += `<button class="btn-link" type="button" data-day="1">看明天班次 →</button>`;
+      html += `<div class="label">${future ? '當日' : '今天'}已無班次</div>`;
+      if (!future) html += `<button class="btn-link" type="button" data-day="1">看明天班次 →</button>`;
     }
     $('next').hidden = false;
     $('next').innerHTML = html;
@@ -563,11 +601,34 @@
     else typeFilter.add(k);
     renderTrains();
   });
+  function setDate(dateStr) {
+    const min = dateFor(0);
+    const max = dateFor(MAX_DAYS_AHEAD);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+    selectedDate = dateStr < min ? min : dateStr > max ? max : dateStr;
+    loadTimetable(true);
+  }
+  function shiftDate(n) {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    setDate(new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10));
+  }
+  function syncDayBar() {
+    const diff = dayDiff();
+    $('dayPick').value = selectedDate;
+    $('dayPick').min = dateFor(0);
+    $('dayPick').max = dateFor(MAX_DAYS_AHEAD);
+    $('dayPrev').disabled = diff <= 0;
+    $('dayNext').disabled = diff >= MAX_DAYS_AHEAD;
+    $('dayToday').disabled = diff === 0;
+  }
+  $('dayPrev').addEventListener('click', () => shiftDate(-1));
+  $('dayNext').addEventListener('click', () => shiftDate(1));
+  $('dayToday').addEventListener('click', () => setDate(dateFor(0)));
+  $('dayPick').addEventListener('change', e => setDate(e.target.value));
   $('next').addEventListener('click', e => {
     const b = e.target.closest('[data-day]');
     if (!b) return;
-    dayOffset = 1;
-    loadTimetable(true);
+    setDate(dateFor(1));
   });
   $('list').addEventListener('click', e => {
     const row = e.target.closest('.train[data-key]');
@@ -599,7 +660,8 @@
   async function init() {
     routes = loadRoutes();
     renderRoutes();
-    $('today').textContent = dateFor(0).replace(/-/g, '/');
+    selectedDate = dateFor(0);
+    syncDayBar();
     // 車站清單與班次同時載入，不互相等待
     const stationsReady = loadStations()
       .then(() => { fillStationSelects(); renderRoutes(); })
