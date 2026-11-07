@@ -285,22 +285,24 @@
     return list;
   }
 
-  // 即時誤點：依出發站查詢，用車次對應
-  async function fetchDelays(stationId) {
+  // 即時誤點：所有運行中列車（不分車站），用車次對應；同車次取最新回報
+  async function fetchDelays() {
     const map = new Map();
     try {
-      const res = await fetch(`${API}/tra/live?station=${encodeURIComponent(stationId)}`);
+      const res = await fetch(`${API}/tra/delays`);
       if (!res.ok) return map;
       const payload = await res.json();
-      const data = payload.data || payload;
-      const rows = Array.isArray(data)
-        ? data
-        : (data.LiveTrains || data.LiveTrainDelay || data.LiveBoards || data.Trains || []);
+      const rows = Array.isArray(payload.data) ? payload.data : [];
+      const latest = new Map();
       rows.forEach(r => {
         const no = String(r.TrainNo || '');
         const d = Number(r.DelayTime);
-        if (no && Number.isFinite(d)) map.set(no, d);
+        if (!no || !Number.isFinite(d)) return;
+        const at = String(r.SrcUpdateTime || '');
+        const prev = latest.get(no);
+        if (!prev || at > prev.at) latest.set(no, { d, at });
       });
+      latest.forEach((v, k) => map.set(k, v.d));
     } catch (e) { /* 誤點資料失敗時仍顯示時刻表 */ }
     return map;
   }
@@ -327,7 +329,7 @@
       showStatus('載入班次中…');
     }
     try {
-      const [list, delays] = await Promise.all([fetchTrains(route), fetchDelays(route.from)]);
+      const [list, delays] = await Promise.all([fetchTrains(route), fetchDelays()]);
       list.forEach(t => { t.delay = delays.has(t.no) ? delays.get(t.no) : undefined; });
       trains = list;
       loadedKey = key;
