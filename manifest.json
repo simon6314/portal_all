@@ -1,7 +1,7 @@
 {
   "name": "Simon's Hub",
   "short_name": "Simon's Hub",
-  "start_url": "./index.html",
+  "start_url": "./index.html?v=2",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
