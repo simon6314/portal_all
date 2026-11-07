@@ -14,6 +14,14 @@ const CONFIG = {
       icon: "💧"
     },
     {
+      id: "train_timetable",
+      title: "火車時刻",
+      url: "https://simon6314.github.io/portal_all/train/",
+      isPublic: true,
+      description: "台鐵班次查詢，可自行增減路線",
+      icon: "🚆"
+    },
+    {
       id: "real_weather",
       title: "即時天氣",
       url: "https://simon6314.github.io/real_weather/?v=20260910_1142",
