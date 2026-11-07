@@ -550,8 +550,14 @@
 
     const now = future ? -1 : nowMinutesTaipei();
     const visible = trains.filter(t => !typeFilter.size || typeFilter.has(typeKey(t)));
-    const upcoming = visible.filter(t => t.depMin >= now && !t.suspended);
-    const prev = future ? null : [...visible].reverse().find(t => t.depMin < now && !t.suspended);
+    // 以「預計發車時間」（原定 + 誤點）判斷已發車 / 即將發車，誤點還沒開走的班次維持亮燈
+    const effDep = t => t.depMin + (!future && t.delay > 0 ? t.delay : 0);
+    const upcoming = visible
+      .filter(t => effDep(t) >= now && !t.suspended)
+      .sort((x, y) => effDep(x) - effDep(y));
+    const prev = future ? null : visible
+      .filter(t => effDep(t) < now && !t.suspended)
+      .sort((x, y) => effDep(y) - effDep(x))[0];
     const nextTrain = upcoming[0];
     const nextIdx = visible.indexOf(nextTrain);
 
@@ -568,7 +574,7 @@
       html += `<div class="label">沒有符合篩選的班次</div>`;
     } else if (upcoming.length) {
       html += `<div class="label">${future ? '當日最早三班' : '接下來三班'}</div>` + upcoming.slice(0, 3).map((t, k) => {
-        const wait = t.depMin - now;
+        const wait = effDep(t) - now;
         return `
         <div class="up-row${k === 0 ? ' first' : ''}">
           <div class="up-time">${esc(t.dep)} <span class="up-arr">→ ${esc(t.arr)}</span></div>
@@ -590,7 +596,7 @@
       const open = expanded.has(key);
       const cls = ['train',
         i === nextIdx ? 'next-one' : '',
-        t.depMin < now ? 'past' : '',
+        effDep(t) < now ? 'past' : '',
         t.suspended ? 'suspended' : '',
         open ? 'open' : ''].join(' ');
       return `
