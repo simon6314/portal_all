@@ -494,8 +494,37 @@
     ].join('');
   }
 
+  // 單一車次的完整停靠站（包含經過不停的站），點開班次時才抓
+  const stopCache = new Map();   // key: `${車次}-${日期}` → [{ id, name, time }]
+  const stopFailed = new Set();
+  async function fetchStops(no, date) {
+    const k = `${no}-${date}`;
+    if (stopCache.has(k)) return stopCache.get(k);
+    const res = await fetch(`${API}/tra/train?no=${encodeURIComponent(no)}&date=${date}`);
+    if (!res.ok) throw new Error('stops');
+    const payload = await res.json();
+    const body = payload.data || payload;
+    const tt = (body.TrainTimetables || [])[0];
+    if (!tt || !Array.isArray(tt.StopTimes)) throw new Error('stops');
+    const list = tt.StopTimes.map(x => ({
+      id: x.StationID,
+      name: nameField(x.StationName),
+      time: x.ArrivalTime || x.DepartureTime || ''
+    }));
+    stopCache.set(k, list);
+    return list;
+  }
+
   function stopsHtml(t, route) {
-    return `<div class="stops">${t.stops.map(s => {
+    const k = `${t.no}-${selectedDate}`;
+    let list = stopCache.get(k);
+    if (!list) {
+      if (!stopFailed.has(k)) {
+        return '<div class="stops"><div class="stop"><span>載入停靠站…</span><span></span></div></div>';
+      }
+      list = t.stops;  // 完整資料抓不到時，退回只顯示起訖站
+    }
+    return `<div class="stops">${list.map(s => {
       const end = s.id === route.from || s.id === route.to;
       return `<div class="stop${end ? ' end' : ''}"><span>${esc(s.name || nameOf(s.id))}</span><span>${esc(s.time)}</span></div>`;
     }).join('')}</div>`;
@@ -634,9 +663,15 @@
     const row = e.target.closest('.train[data-key]');
     if (!row) return;
     const k = row.dataset.key;
-    if (expanded.has(k)) expanded.delete(k);
-    else expanded.add(k);
+    if (expanded.has(k)) { expanded.delete(k); renderTrains(); return; }
+    expanded.add(k);
+    const t = trains.find(x => `${x.no}-${x.dep}` === k);
     renderTrains();
+    if (!t) return;
+    const date = selectedDate;
+    fetchStops(t.no, date)
+      .catch(() => stopFailed.add(`${t.no}-${date}`))
+      .finally(() => renderTrains());
   });
 
   // 前景每 30 秒更新倒數、每 5 分鐘重抓；切到背景時停止，回到前景立即更新
