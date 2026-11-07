@@ -82,6 +82,11 @@
   .next .time { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 4px 0; }
   .next .meta { font-size: 0.9rem; color: var(--sub); }
   .next .countdown { color: var(--accent-2); font-weight: 700; }
+  .next .up-row { padding: 10px 0; border-top: 1px solid var(--line, rgba(127,127,127,.25)); }
+  .next .up-row:first-of-type { border-top: 0; padding-top: 4px; }
+  .next .up-row.first .up-time { font-size: 1.8rem; }
+  .next .up-time { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .next .up-arr { font-size: 0.95rem; color: var(--sub); font-weight: 400; }
 
   .list { display: flex; flex-direction: column; gap: 8px; }
   .train {
@@ -335,19 +340,24 @@
     const now = nowMinutesTaipei();
     const nextIdx = trains.findIndex(t => t.depMin >= now && !t.suspended);
 
-    // 下一班
-    const next = trains[nextIdx];
-    if (next) {
-      const wait = next.depMin - now;
+    // 接下來三班
+    const upcoming = trains
+      .filter(t => t.depMin >= now && !t.suspended)
+      .slice(0, 3);
+    if (upcoming.length) {
       $('next').hidden = false;
-      $('next').innerHTML = `
-        <div class="label">下一班</div>
-        <div class="time">${esc(next.dep)} <span style="font-size:1rem;color:var(--sub)">→ ${esc(next.arr)}</span></div>
-        <div class="meta">${esc(next.type)} ${esc(next.no)} 次${next.head ? ' · ' + esc(next.head) : ''}</div>
-        <div class="meta"><span class="countdown">${wait <= 0 ? '即將發車' : `還有 ${wait} 分鐘`}</span> · 行車 ${esc(fmtDuration(next.duration))} ${delayHtml(next)}</div>`;
+      $('next').innerHTML = `<div class="label">接下來三班</div>` + upcoming.map((t, k) => {
+        const wait = t.depMin - now;
+        return `
+        <div class="up-row${k === 0 ? ' first' : ''}">
+          <div class="up-time">${esc(t.dep)} <span class="up-arr">→ ${esc(t.arr)}</span></div>
+          <div class="meta">${esc(t.type)} ${esc(t.no)} 次${t.head ? ' · ' + esc(t.head) : ''} · 行車 ${esc(fmtDuration(t.duration))}</div>
+          <div class="meta"><span class="countdown">${wait <= 0 ? '即將發車' : `還有 ${wait} 分鐘`}</span> ${delayHtml(t)}</div>
+        </div>`;
+      }).join('');
     } else {
       $('next').hidden = false;
-      $('next').innerHTML = `<div class="label">下一班</div><div class="time">今天已無班次</div>`;
+      $('next').innerHTML = `<div class="label">接下來三班</div><div class="time">今天已無班次</div>`;
     }
 
     // 班次列表
