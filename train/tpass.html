@@ -70,17 +70,17 @@
   </header>
 
   <section class="card" aria-labelledby="h-valid">
-    <h2 id="h-valid">效期</h2>
-    <div class="row">
-      <span class="sub">啟用日（首次搭乘的日期）</span>
+    <h2 id="h-valid">目前這一期</h2>
+    <div id="validBox"></div>
+    <div class="row" style="margin-top:12px">
+      <input id="pStart" type="date" class="grow" aria-label="新一期的啟用日">
+      <input id="pPrice" type="number" min="0" inputmode="numeric" placeholder="價格" aria-label="新一期的價格" style="width:110px">
     </div>
     <div class="row">
-      <input id="actDate" type="date" class="grow" aria-label="啟用日">
-      <button id="actSave" class="btn" type="button">儲存</button>
-      <button id="actClear" class="btn ghost" type="button">清除</button>
+      <button id="pAdd" class="btn" type="button">開始新一期（續購）</button>
+      <span id="pMsg" class="sub"></span>
     </div>
-    <div id="validBox" style="margin-top:12px"></div>
-    <div class="note">效期為啟用後連續 30 天（含啟用當天）。實際效期以卡面與票務公告為準。</div>
+    <div class="note">效期為啟用後連續 30 天（含啟用當天）。續購時預設從上一期到期的隔天開始，價格預設沿用上一期，可以自行修改。實際效期以卡面與票務公告為準。</div>
   </section>
 
   <section class="card" aria-labelledby="h-usage">
@@ -100,11 +100,17 @@
       <label class="sub grow">竹北 → 竹南 單程（元）<input id="fareB" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填"></label>
     </div>
     <div class="row">
-      <label class="sub grow">Tpass 價格（元）<input id="passPrice" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填，例如 1200"></label>
+      <label class="sub grow">本期 Tpass 價格（元）<input id="passPrice" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填，例如 1200"></label>
     </div>
     <div id="calcBox"></div>
     <div id="fareNote" class="note"></div>
-    <div class="note">票價為全票單程。可以手動修改數字。Tpass 價格請依你購買的版本填寫。沒有票價的記錄不會計入原價，會另外提示。</div>
+    <div class="note">票價為全票單程。可以手動修改數字。沒有票價的記錄不會計入原價，會另外提示。</div>
+  </section>
+
+  <section class="card" aria-labelledby="h-hist">
+    <h2 id="h-hist">各期紀錄</h2>
+    <div id="histBox"></div>
+    <div class="note">省下 / 多花 = 該期搭乘的原價合計 − 該期 Tpass 價格。只計入有填價格的期數。刪除一期不會刪除搭乘記錄。</div>
   </section>
 
   <section class="card" aria-labelledby="h-log">
@@ -154,41 +160,39 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  // 竹南↔竹北 全票單程票價（TDX 台鐵票價 2026-10-04 生效，順行 24.5 公里）
-  // 竹北→竹南 未另外查證，假設與竹南→竹北相同
-  const FARE_TABLE = {
-    '區間': 53,
-    '區間快': 53,
-    '莒光': 64,
-    '推拉式自強': 83,
-    '自強3000': 83,
-    '普悠瑪': 83
-  };
-
+  // 竹南↔竹北 全票單程票價（TDX 2026-10-04 版，離線預設值）
+  const FARE_TABLE = { '區間': 53, '區間快': 53, '莒光': 64, '推拉式自強': 83, '自強3000': 83, '普悠瑪': 83 };
   // TDX 車種代碼對應名稱（票價用）
   const TYPE_NAME = { 2: '普悠瑪', 3: '推拉式自強', 4: '莒光', 6: '區間', 10: '區間快', 11: '自強3000' };
   const TYPE_ORDER = ['區間', '區間快', '莒光', '推拉式自強', '自強3000', '普悠瑪'];
-  // 每個方向抓到的票價表：{ '1250-1180': { 車種: 票價 }, ... }；抓不到時用上面的預設值
   let fareMaps = {};
-  let fareSource = '離線預設值';
+  let fareSource = '離線預設值（TDX 2026-10-04 版）';
 
   let stations = [];
-  let data = { activated: '', trips: [], fares: {}, passPrice: '' };
+  let data = { periods: [], trips: [], fares: {}, fareType: '' };
 
-  // ---------- 儲存 ----------
+  // ---------- 儲存（含舊版遷移） ----------
   function loadData() {
     try {
       const d = JSON.parse(localStorage.getItem(KEY_TPASS));
-      if (d && typeof d === 'object') data = {
-        activated: d.activated || '',
-        trips: Array.isArray(d.trips) ? d.trips : [],
-        fares: d.fares && typeof d.fares === 'object' ? d.fares : {},
-        passPrice: d.passPrice || ''
-      };
+      if (!d || typeof d !== 'object') return;
+      data.trips = Array.isArray(d.trips) ? d.trips : [];
+      data.fares = d.fares && typeof d.fares === 'object' ? d.fares : {};
+      data.fareType = d.fareType || '';
+      if (Array.isArray(d.periods)) {
+        data.periods = d.periods;
+      } else if (d.activated) {
+        // 舊版只有一個啟用日：轉成第一期
+        data.periods = [{ id: 'p' + Date.now(), start: d.activated, price: d.passPrice === undefined ? '' : d.passPrice }];
+      }
+      sortPeriods();
     } catch (e) { /* 無法讀取時用空資料 */ }
   }
   function saveData() {
     try { localStorage.setItem(KEY_TPASS, JSON.stringify(data)); } catch (e) { /* ignore */ }
+  }
+  function sortPeriods() {
+    data.periods.sort((a, b) => a.start.localeCompare(b.start));
   }
   function loadRoutes() {
     try {
@@ -212,6 +216,8 @@
     return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
   }
   const fmtMD = s => s ? s.slice(5).replace('-', '/') : '';
+  const periodEnd = p => addDays(p.start, 29);
+  const currentPeriod = () => data.periods.length ? data.periods[data.periods.length - 1] : null;
 
   // ---------- 車站 ----------
   function nameOf(id) {
@@ -246,26 +252,48 @@
     return { cls: 'ask', text: '需確認（車種）' };
   }
 
-  // ---------- 效期 ----------
+  // ---------- 期數與統計 ----------
+  function tripsIn(start, end) {
+    return data.trips.filter(t => t.date >= start && t.date <= end);
+  }
+  function fareOf(t) {
+    if (typeof t.fare === 'number' && t.fare >= 0) return t.fare;
+    const f = data.fares[`${t.from}-${t.to}`];
+    return typeof f === 'number' && f >= 0 ? f : null;
+  }
+  function summaryOf(p) {
+    const list = tripsIn(p.start, periodEnd(p));
+    let total = 0, priced = 0, missing = 0;
+    list.forEach(t => {
+      const f = fareOf(t);
+      if (f === null) { missing++; return; }
+      total += f; priced++;
+    });
+    const price = p.price === '' || p.price === undefined ? null : Number(p.price);
+    return { count: list.length, total, priced, missing, price, diff: price === null ? null : total - price };
+  }
+
+  // ---------- 目前這一期 ----------
   function renderValid() {
-    const today = todayTaipei();
+    const cur = currentPeriod();
     const box = $('validBox');
-    if (!data.activated) {
-      box.innerHTML = '<div class="empty">尚未設定啟用日。第一次搭乘後，把日期填入上方並儲存。</div>';
+    if (!cur) {
+      box.innerHTML = '<div class="empty">還沒有任何一期。請在下方填入第一期的啟用日（第一次搭乘的日期）與價格。</div>';
       return;
     }
-    const start = data.activated;
-    const end = addDays(start, 29);
+    const today = todayTaipei();
+    const start = cur.start;
+    const end = periodEnd(cur);
     const total = 30;
-    const used = Math.min(total, Math.max(0, daysBetween(start, today) + 1));
     if (today < start) {
       box.innerHTML = `<div class="big">尚未啟用</div><div class="sub">預計 ${fmtMD(start)} 啟用，效期至 ${fmtMD(end)}</div>`;
       return;
     }
     if (today > end) {
-      box.innerHTML = `<div class="big" style="color:var(--danger)">已過期</div><div class="sub">效期至 ${fmtMD(end)}</div>`;
+      box.innerHTML = `<div class="big" style="color:var(--danger)">已過期</div><div class="sub">效期至 ${fmtMD(end)}。可在下方開始新一期。</div>`;
       return;
     }
+    const used = Math.min(total, Math.max(0, daysBetween(start, today) + 1));
     const left = daysBetween(today, end) + 1;
     const warn = left <= 3;
     box.innerHTML = `
@@ -274,21 +302,29 @@
       <div class="bar"><div class="${warn ? 'warn' : ''}" style="width:${Math.round(used / total * 100)}%"></div></div>
       <div class="sub">已用 ${used} / ${total} 天</div>`;
   }
+  // 續購表單：預設從上一期到期的隔天開始，價格沿用上一期
+  function fillPeriodForm() {
+    const cur = currentPeriod();
+    $('pStart').value = cur ? addDays(cur.start, 30) : todayTaipei();
+    $('pStart').min = '';
+    $('pPrice').value = cur && cur.price !== '' && cur.price !== undefined ? cur.price : '';
+    $('pMsg').textContent = '';
+  }
 
   // ---------- 本期統計 ----------
-  function periodRange() {
-    const today = todayTaipei();
-    if (data.activated) {
-      return { start: data.activated, end: addDays(data.activated, 29), label: '本期（啟用後 30 天）' };
-    }
-    // 尚未啟用：以本月為範圍
-    const start = today.slice(0, 8) + '01';
-    return { start, end: addDays(start, 30), label: '本月（尚未設定啟用日）' };
-  }
   function renderUsage() {
-    const { start, end, label } = periodRange();
+    const cur = currentPeriod();
     const today = todayTaipei();
-    const inPeriod = data.trips.filter(t => t.date >= start && t.date <= end);
+    let start, end, label;
+    if (cur) {
+      start = cur.start; end = periodEnd(cur);
+      label = `本期（${fmtMD(start)}–${fmtMD(end)}）`;
+    } else {
+      start = today.slice(0, 8) + '01';
+      end = addDays(start, 30);
+      label = '本月（尚未設定任何一期）';
+    }
+    const inPeriod = tripsIn(start, end);
     const todayCount = inPeriod.filter(t => t.date === today).length;
     const days = new Set(inPeriod.map(t => t.date)).size;
     $('usageBox').innerHTML = `
@@ -298,12 +334,7 @@
       <div class="note">搭乘次數是你自己記錄的，Tpass 本身沒有次數限制，這裡只是方便回顧。</div>`;
   }
 
-  // ---------- 票價試算 ----------
-  function fareOf(t) {
-    if (typeof t.fare === 'number' && t.fare >= 0) return t.fare;
-    const f = data.fares[`${t.from}-${t.to}`];
-    return typeof f === 'number' && f >= 0 ? f : null;
-  }
+  // ---------- 票價試算（本期） ----------
   function fareLabel(type) {
     const m = fareMaps['1250-1180'] || {};
     const price = m[type] ?? FARE_TABLE[type];
@@ -314,11 +345,9 @@
     $('fareType').innerHTML = types.map(t => `<option value="${esc(t)}">${esc(fareLabel(t))}</option>`).join('');
     $('fareNote').textContent = `票價來源：${fareSource}。全票單程，竹南 ↔ 竹北，順行。`;
   }
-  // 從 Worker 的票價資料取全票單程（最短距離的直達票價）
   function parseFares(body) {
     const list = (body.ODFares || []).filter(x => Array.isArray(x.Fares));
     if (!list.length) return null;
-    // 最短距離即直達（順行）；車種在外層 TrainType，價格在 Fares 裡
     const minDist = Math.min(...list.map(x => x.TravelDistance || 0));
     const map = {};
     list.filter(x => (x.TravelDistance || 0) === minDist).forEach(x => {
@@ -351,52 +380,6 @@
     if (m && m[type] !== undefined) return m[type];
     return FARE_TABLE[type];
   }
-
-  function renderFare() {
-    if (!$('fareType').options.length) buildFareOptions();
-    $('fareType').value = data.fareType || '區間';
-    $('fareA').value = data.fares['1250-1180'] ?? '';
-    $('fareB').value = data.fares['1180-1250'] ?? '';
-    $('passPrice').value = data.passPrice ?? '';
-    const { start, end, label } = periodRange();
-    const inPeriod = data.trips.filter(t => t.date >= start && t.date <= end);
-    let total = 0, priced = 0, missing = 0;
-    inPeriod.forEach(t => {
-      const f = fareOf(t);
-      if (f === null) { missing++; return; }
-      total += f; priced++;
-    });
-    const pass = Number(data.passPrice);
-    const hasPass = data.passPrice !== '' && Number.isFinite(pass) && pass >= 0;
-    const diff = hasPass ? total - pass : null;
-    let savingText;
-    if (!hasPass) savingText = '<div class="sub">請填 Tpass 價格</div>';
-    else if (diff > 0) savingText = `<div class="big" style="color:var(--ok)">省 NT$${diff}</div><div class="sub">買 Tpass 比較划算</div>`;
-    else if (diff < 0) savingText = `<div class="big" style="color:var(--danger)">多花 NT$${-diff}</div><div class="sub">目前搭乘次數還不划算</div>`;
-    else savingText = '<div class="big">打平</div>';
-    // 幾趟會回本（以竹南↔竹北單程計）
-    const fA = data.fares['1250-1180'], fB = data.fares['1180-1250'];
-    const perTrip = [fA, fB].filter(v => typeof v === 'number' && v > 0);
-    const breakeven = hasPass && perTrip.length
-      ? `<div class="sub">竹南↔竹北單程約 ${Math.min(...perTrip)}–${Math.max(...perTrip)} 元，搭約 ${Math.ceil(pass / Math.max(...perTrip))}–${Math.ceil(pass / Math.min(...perTrip))} 趟就回本</div>`
-      : '';
-    $('calcBox').innerHTML = `
-      <div class="sub" style="margin-top:10px">${esc(label)}</div>
-      <div class="calc">
-        <div class="cell"><div class="sub">原價合計</div><div class="big">NT$${total}</div><div class="sub">${priced} 趟已計價</div></div>
-        <div class="cell"><div class="sub">Tpass 費用</div><div class="big">${hasPass ? 'NT$' + pass : '—'}</div><div class="sub">${savingText}</div></div>
-      </div>
-      ${breakeven}
-      ${missing ? `<div class="warn-text">有 ${missing} 趟沒有票價，未計入原價。</div>` : ''}`;
-  }
-  $('fareType').addEventListener('change', e => {
-    data.fareType = e.target.value;
-    data.fares['1250-1180'] = fareFor('1250-1180', e.target.value);
-    data.fares['1180-1250'] = fareFor('1180-1250', e.target.value);
-    saveData(); renderFare(); renderTrips();
-  });
-  $('fareA').addEventListener('change', e => setFare('1250-1180', e.target.value));
-  $('fareB').addEventListener('change', e => setFare('1180-1250', e.target.value));
   function applyDefaultFare() {
     if (data.fares['1250-1180'] === undefined && data.fares['1180-1250'] === undefined) {
       const t = data.fareType || '區間';
@@ -406,15 +389,72 @@
       saveData();
     }
   }
-  function setFare(key, v) {
-    if (v === '') delete data.fares[key];
-    else data.fares[key] = Math.max(0, Number(v));
-    saveData(); renderFare(); renderTrips();
+  function renderFare() {
+    if (!$('fareType').options.length) buildFareOptions();
+    $('fareType').value = data.fareType || '區間';
+    $('fareA').value = data.fares['1250-1180'] ?? '';
+    $('fareB').value = data.fares['1180-1250'] ?? '';
+    const cur = currentPeriod();
+    $('passPrice').value = cur && cur.price !== undefined ? cur.price : '';
+    if (!cur) {
+      $('calcBox').innerHTML = '<div class="empty">還沒有期數，請先開始第一期。</div>';
+      return;
+    }
+    const s = summaryOf(cur);
+    const pass = s.price;
+    let savingText;
+    if (pass === null) savingText = '<div class="sub">請填本期 Tpass 價格</div>';
+    else if (s.diff > 0) savingText = `<div class="big" style="color:var(--ok)">省 NT$${s.diff}</div><div class="sub">買 Tpass 比較划算</div>`;
+    else if (s.diff < 0) savingText = `<div class="big" style="color:var(--danger)">多花 NT$${-s.diff}</div><div class="sub">目前搭乘次數還不划算</div>`;
+    else savingText = '<div class="big">打平</div>';
+    const fA = data.fares['1250-1180'], fB = data.fares['1180-1250'];
+    const perTrip = [fA, fB].filter(v => typeof v === 'number' && v > 0);
+    const breakeven = pass !== null && perTrip.length
+      ? `<div class="sub">竹南↔竹北單程約 ${Math.min(...perTrip)}–${Math.max(...perTrip)} 元，搭約 ${Math.ceil(pass / Math.max(...perTrip))}–${Math.ceil(pass / Math.min(...perTrip))} 趟就回本</div>`
+      : '';
+    $('calcBox').innerHTML = `
+      <div class="sub" style="margin-top:10px">本期（${fmtMD(cur.start)}–${fmtMD(periodEnd(cur))}）</div>
+      <div class="calc">
+        <div class="cell"><div class="sub">原價合計</div><div class="big">NT$${s.total}</div><div class="sub">${s.priced} 趟已計價</div></div>
+        <div class="cell"><div class="sub">Tpass 費用</div><div class="big">${pass !== null ? 'NT$' + pass : '—'}</div><div class="sub">${savingText}</div></div>
+      </div>
+      ${breakeven}
+      ${s.missing ? `<div class="warn-text">有 ${s.missing} 趟沒有票價，未計入原價。</div>` : ''}`;
   }
-  $('passPrice').addEventListener('change', e => {
-    data.passPrice = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
-    saveData(); renderFare();
-  });
+
+  // ---------- 各期紀錄 ----------
+  function renderHistory() {
+    if (!data.periods.length) {
+      $('histBox').innerHTML = '<div class="empty">還沒有任何期數。</div>';
+      return;
+    }
+    const cur = currentPeriod();
+    let cumulative = 0, hasAny = false;
+    const rows = [...data.periods].reverse().map(p => {
+      const s = summaryOf(p);
+      if (s.diff !== null) { cumulative += s.diff; hasAny = true; }
+      const isCur = cur && p.id === cur.id;
+      const today = todayTaipei();
+      const stateTag = !isCur ? '' : today < p.start ? '（未開始）' : today > periodEnd(p) ? '' : '（進行中）';
+      const saving = s.diff === null
+        ? '<span class="sub">未填價格</span>'
+        : s.diff >= 0 ? `<span class="tag ok">省 NT$${s.diff}</span>` : `<span class="tag no">多花 NT$${-s.diff}</span>`;
+      return `
+        <div class="trip">
+          <div>
+            <div>${esc(fmtMD(p.start))}–${esc(fmtMD(periodEnd(p)))} ${stateTag ? `<span class="sub">${stateTag}</span>` : ''}</div>
+            <div class="sub">${s.count} 趟 · 原價 NT$${s.total}${s.price !== null ? ` · Tpass NT$${s.price}` : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${saving}
+            <button class="del" type="button" data-pdel="${esc(p.id)}" aria-label="刪除此期">×</button>
+          </div>
+        </div>`;
+    }).join('');
+    $('histBox').innerHTML = rows + (hasAny
+      ? `<div class="trip" style="border-top:1px solid var(--line);margin-top:6px"><div><b>累計</b></div><div>${cumulative >= 0 ? `<span class="tag ok">省 NT$${cumulative}</span>` : `<span class="tag no">多花 NT$${-cumulative}</span>`}</div></div>`
+      : '');
+  }
 
   // ---------- 搭乘記錄 ----------
   function renderTrips() {
@@ -423,11 +463,12 @@
       const c = inZone(t.from) && inZone(t.to)
         ? { cls: 'ok', text: '範圍內' }
         : { cls: 'no', text: '超出範圍' };
+      const f = fareOf(t);
       return `
         <div class="trip">
           <div>
             <div>${esc(t.date.replace(/-/g, '/'))}</div>
-            <div class="sub">${esc(nameOf(t.from))} → ${esc(nameOf(t.to))}${fareOf(t) !== null ? ` · NT$${fareOf(t)}` : ' · 未設票價'}</div>
+            <div class="sub">${esc(nameOf(t.from))} → ${esc(nameOf(t.to))}${f !== null ? ` · NT$${f}` : ' · 未設票價'}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span class="tag ${c.cls}">${esc(c.text)}</span>
@@ -435,6 +476,19 @@
           </div>
         </div>`;
     }).join('') : '<div class="empty">還沒有搭乘記錄。</div>';
+  }
+  function addTrip(from, to, fare) {
+    const msg = $('tMsg');
+    const date = $('tDate').value;
+    msg.textContent = '';
+    if (!date) { msg.textContent = '請選日期。'; return; }
+    if (from === to) { msg.textContent = '出發站和到達站不能相同。'; return; }
+    const rec = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), date, from, to };
+    if (typeof fare === 'number' && fare >= 0) rec.fare = fare;
+    data.trips.push(rec);
+    saveData();
+    msg.textContent = `已記錄 ${nameOf(from)} → ${nameOf(to)}`;
+    renderAll();
   }
 
   // ---------- 今天班次適用標示 ----------
@@ -480,33 +534,54 @@
     $('appRoute').innerHTML = routes.map((r, i) => `<option value="${i}">${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}</option>`).join('');
   }
 
-  // ---------- 事件 ----------
-  $('actSave').addEventListener('click', () => {
-    const v = $('actDate').value;
-    if (!v) return;
-    data.activated = v;
-    saveData();
-    renderValid(); renderUsage(); renderFare();
-  });
-  $('actClear').addEventListener('click', () => {
-    data.activated = '';
-    $('actDate').value = '';
-    saveData();
-    renderValid(); renderUsage(); renderFare();
-  });
-  function addTrip(from, to, fare) {
-    const msg = $('tMsg');
-    const date = $('tDate').value;
-    msg.textContent = '';
-    if (!date) { msg.textContent = '請選日期。'; return; }
-    if (from === to) { msg.textContent = '出發站和到達站不能相同。'; return; }
-    const rec = { id: String(Date.now()) + Math.random().toString(36).slice(2, 6), date, from, to };
-    if (typeof fare === 'number' && fare >= 0) rec.fare = fare;
-    data.trips.push(rec);
-    saveData();
-    msg.textContent = `已記錄 ${nameOf(from)} → ${nameOf(to)}`;
-    renderTrips(); renderUsage(); renderFare();
+  function renderAll() {
+    renderValid(); renderUsage(); renderFare(); renderHistory(); renderTrips();
   }
+
+  // ---------- 事件 ----------
+  $('pAdd').addEventListener('click', () => {
+    const start = $('pStart').value;
+    const priceRaw = $('pPrice').value;
+    const msg = $('pMsg');
+    msg.textContent = '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) { msg.textContent = '請選啟用日。'; return; }
+    if (data.periods.some(p => p.start === start)) { msg.textContent = '這個啟用日已經有一期了。'; return; }
+    const price = priceRaw === '' ? '' : Math.max(0, Number(priceRaw));
+    data.periods.push({ id: 'p' + Date.now() + Math.random().toString(36).slice(2, 5), start, price });
+    sortPeriods();
+    saveData();
+    fillPeriodForm();
+    renderAll();
+    msg.textContent = `已開始 ${fmtMD(start)} 起的新一期`;
+  });
+  $('histBox').addEventListener('click', e => {
+    const b = e.target.closest('[data-pdel]');
+    if (!b) return;
+    data.periods = data.periods.filter(p => p.id !== b.dataset.pdel);
+    saveData();
+    fillPeriodForm();
+    renderAll();
+  });
+  $('passPrice').addEventListener('change', e => {
+    const cur = currentPeriod();
+    if (!cur) return;
+    cur.price = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+    saveData();
+    renderFare(); renderHistory();
+  });
+  $('fareType').addEventListener('change', e => {
+    data.fareType = e.target.value;
+    data.fares['1250-1180'] = fareFor('1250-1180', e.target.value);
+    data.fares['1180-1250'] = fareFor('1180-1250', e.target.value);
+    saveData(); renderAll();
+  });
+  function setFare(key, v) {
+    if (v === '') delete data.fares[key];
+    else data.fares[key] = Math.max(0, Number(v));
+    saveData(); renderAll();
+  }
+  $('fareA').addEventListener('change', e => setFare('1250-1180', e.target.value));
+  $('fareB').addEventListener('change', e => setFare('1180-1250', e.target.value));
   // 常用路線：一鍵記錄（竹南 1250、竹北 1180）
   $('qA').addEventListener('click', () => addTrip('1250', '1180'));
   $('qB').addEventListener('click', () => addTrip('1180', '1250'));
@@ -520,7 +595,7 @@
     if (!b) return;
     data.trips = data.trips.filter(t => t.id !== b.dataset.id);
     saveData();
-    renderTrips(); renderUsage(); renderFare();
+    renderAll();
   });
   $('appRoute').addEventListener('change', renderApplicable);
 
@@ -530,16 +605,15 @@
     await loadFares();
     buildFareOptions();
     applyDefaultFare();
-    const today = todayTaipei();
-    $('tDate').value = today;
-    $('actDate').value = data.activated || '';
+    $('tDate').value = todayTaipei();
+    fillPeriodForm();
     try { await loadStations(); } catch (e) { /* 車站載入失敗時選單會是空的 */ }
     const opts = stations.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
     $('tFrom').innerHTML = opts;
     $('tTo').innerHTML = opts;
     if (stations.length > 1) $('tTo').selectedIndex = 1;
     fillRouteSelect();
-    renderValid(); renderUsage(); renderFare(); renderTrips();
+    renderAll();
     renderApplicable();
   }
   init();
