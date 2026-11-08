@@ -127,13 +127,15 @@ const ZONES = {
 };
 
 const KEY = 'home_items_cfg_v1';
-let cfg = { url: '', token: '' };
+const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbzxAa54dNYBCnB4eREdCacxjjV4JvopXQJiQwKa0opUOEg7Y6mbPKd0sBy-tfG-JPafMQ/exec';
+let cfg = { url: DEFAULT_URL, token: '' };
 let items = [];
 let selZone = null;
 let editId = null;
 
 function loadCfg() {
   try { cfg = Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+  cfg.url = DEFAULT_URL; // 網址固定寫在程式裡；密碼只存在瀏覽器
 }
 function saveCfg() {
   try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch (e) {}
@@ -314,7 +316,7 @@ document.getElementById('cfgSave').addEventListener('click', async () => {
 });
 
 loadCfg();
-if (!cfg.url || !cfg.token) document.getElementById('setup').classList.remove('hidden');
+if (!cfg.token) document.getElementById('setup').classList.remove('hidden');
 reload();
 </script>
 </body>
