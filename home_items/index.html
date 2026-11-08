@@ -44,6 +44,14 @@
   .full { grid-column:1 / -1; }
   .muted { color:var(--muted); font-size:13px; }
   .err { color:#e0457b; font-size:13px; }
+
+  .viewtoggle { display:flex; gap:8px; justify-content:center; margin:6px 0 10px; }
+  .viewtoggle button { min-width:92px; }
+  .stage3d { position:relative; margin:0 0 16px; }
+  #c3d { width:100%; height:440px; border-radius:24px; overflow:hidden; background:#fff7f1; box-shadow:0 6px 18px rgba(160,120,200,.14); }
+  #c3d canvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  .hud { display:flex; gap:8px; align-items:center; justify-content:space-between; margin-top:10px; flex-wrap:wrap; }
+  .hud .hint { color:var(--muted); font-size:13px; }
   .hidden { display:none !important; }
   #setup p.muted { margin:10px 2px 0; }
   .stage { perspective:800px; margin:10px 0 30px; padding:30px 0 50px; }
@@ -69,7 +77,8 @@
     <button id="settingsBtn" title="連線設定">⚙</button>
   </div>
 
-  <div class="stage"><svg viewBox="60 860 830 550" role="img" aria-label="格局圖">
+  <div class="viewtoggle"><button id="vt3d" class="primary">立體</button><button id="vt2d">平面</button></div>
+  <div class="stage" id="stage2d" style="display:none"><svg viewBox="60 860 830 550" role="img" aria-label="格局圖">
     <rect class="hall" x="163" y="969" width="400" height="145" rx="18"/>
     <rect class="wall" style="fill:#6e5a9e" x="73" y="915" width="90" height="90" rx="12"/>
     <rect class="wall" style="fill:#7763a5" x="73" y="912" width="90" height="90" rx="12"/>
@@ -283,6 +292,14 @@
     <text class="num" x="763" y="1218">15</text><text class="emo" x="763" y="1248">🚿</text>
     <text class="num" x="363" y="1030" style="fill:#9a8db3">16</text><text class="emo" x="363" y="1060">🚶</text>
   </svg></div>
+  <div class="stage3d" id="stage3d">
+    <div id="c3d"></div>
+    <div class="hud">
+      <button class="primary" id="btnWalk">🚶 走進去</button>
+      <button id="btnOver" class="hidden">🗺️ 回俯瞰</button>
+      <span class="hint" id="hint">拖曳旋轉・點房間選取</span>
+    </div>
+  </div>
 
   <div class="card" id="panel">
     <h2 id="panelTitle">點地圖上的區塊，或直接搜尋</h2>
@@ -306,6 +323,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const ZONES = {
   1: '角落收納空間', 2: '衣櫥', 3: '電腦化妝桌', 4: '冰箱', 5: '流理台',
@@ -416,6 +434,7 @@ function render() {
     zs.innerHTML = Object.keys(ZONES).map(k => `<option value="${k}">${k} · ${ZONES[k]}</option>`).join('');
   }
   if (!editId && selZone !== null) zs.value = String(selZone);
+  if (window.__update3D) window.__update3D();
 }
 
 document.getElementById('list').addEventListener('click', async e => {
@@ -504,6 +523,206 @@ document.getElementById('cfgSave').addEventListener('click', async () => {
 loadCfg();
 if (!cfg.token) document.getElementById('setup').classList.remove('hidden');
 reload();
+</script>
+<script>
+(function () {
+  if (typeof THREE === 'undefined') { console.warn('three.js 未載入'); return; }
+
+  // 格局圖座標（與 SVG 相同）→ 真實尺寸：橫向 10 公尺（長）、縱向 5 公尺（寬），牆高 300cm
+  const RECTS = {
+    1:[73,879,90,90], 2:[163,879,109,90], 3:[272,879,127,90], 4:[399,879,37,90],
+    5:[436,879,127,90], 6:[563,879,91,199], 7:[73,988,90,108], 8:[73,1096,90,91],
+    9:[73,1187,217,200], 10:[290,1114,236,273], 11:[526,1114,37,109], 12:[526,1223,64,109],
+    13:[590,1205,64,127], 14:[526,1332,128,55], 15:[654,1078,218,309]
+  };
+  const HALL = [163,969,400,145];
+  const PAST = {1:'#ffe3ec',2:'#e6dcff',3:'#ffd9ec',4:'#d3f1ff',5:'#ffe2b8',6:'#d5f8c9',7:'#fff3b0',8:'#e6dcff',9:'#ffdede',10:'#d6ebff',11:'#fff3b0',12:'#c9e6ff',13:'#fff3b0',14:'#c9e6ff',15:'#c7f5e6'};
+  const EMO = {1:'🧹',2:'🧥',3:'💻',4:'🧊',5:'🍳',6:'🧺',7:'📚',8:'👔',9:'🧶',10:'🛏️',11:'📦',12:'👕',13:'📦',14:'🧥',15:'🚿'};
+  const PLAN = { x0:73, x1:872, y0:879, y1:1387 };
+  const REAL_W = 10, REAL_D = 5, WALL_H = 3.0, WALL_T = 0.12;
+  const tx = u => (u - PLAN.x0) / (PLAN.x1 - PLAN.x0) * REAL_W - REAL_W / 2;
+  const tz = v => (v - PLAN.y0) / (PLAN.y1 - PLAN.y0) * REAL_D - REAL_D / 2;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  const host = document.getElementById('c3d');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  host.appendChild(renderer.domElement);
+  const el = renderer.domElement;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#fff7f1');
+  scene.fog = new THREE.Fog('#fff7f1', 16, 34);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 100);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+  sun.position.set(4, 10, 6);
+  scene.add(sun);
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(REAL_W + 1.2, 0.05, REAL_D + 1.2),
+    new THREE.MeshStandardMaterial({ color: 0xefe6fb }));
+  base.position.y = -0.03;
+  scene.add(base);
+
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xfffaf3, roughness: 0.9 });
+  const floorMats = {}, floorMeshes = [], bounds = {};
+
+  function floorBox(x0, x1, z0, z1, color) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.04, z1 - z0),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.8 }));
+    m.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
+    scene.add(m);
+    return m;
+  }
+
+  function wall(ax, az, bx, bz) {
+    const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(L + WALL_T, WALL_H, WALL_T), wallMat);
+    m.position.set((ax + bx) / 2, WALL_H / 2, (az + bz) / 2);
+    m.rotation.y = Math.atan2(-dz, dx);
+    scene.add(m);
+  }
+
+  function label(z, b) {
+    const w = b.x1 - b.x0, d = b.z1 - b.z0;
+    if (w < 0.8 || d < 0.8) return;               // 太小的格子不放文字
+    const aspect = d / w;
+    let cw = 512, ch = Math.round(512 * aspect);
+    if (ch > 512) { ch = 512; cw = Math.round(512 / aspect); }
+    const cv = document.createElement('canvas');
+    cv.width = cw; cv.height = ch;
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, cw, ch);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#5b4b72';
+    g.font = 'bold ' + Math.round(ch * 0.28) + 'px "Noto Sans TC", sans-serif';
+    g.fillText(z + ' ' + (EMO[z] || ''), cw / 2, ch * 0.38);
+    g.font = Math.round(ch * 0.16) + 'px "Noto Sans TC", sans-serif';
+    g.fillText(ZONES[z], cw / 2, ch * 0.72);
+    const tex = new THREE.CanvasTexture(cv);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.9, d * 0.9),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set((b.x0 + b.x1) / 2, 0.05, (b.z0 + b.z1) / 2);
+    scene.add(plane);
+  }
+
+  // 建房間：地板 + 四面 300cm 牆
+  Object.keys(RECTS).forEach(k => {
+    const z = Number(k), [x, y, w, h] = RECTS[k];
+    const b = { x0: tx(x), x1: tx(x + w), z0: tz(y), z1: tz(y + h) };
+    bounds[z] = b;
+    const m = floorBox(b.x0, b.x1, b.z0, b.z1, PAST[z]);
+    m.userData.zone = z;
+    floorMats[z] = m.material;
+    floorMeshes.push(m);
+    wall(b.x0, b.z0, b.x1, b.z0); wall(b.x0, b.z1, b.x1, b.z1);
+    wall(b.x0, b.z0, b.x0, b.z1); wall(b.x1, b.z0, b.x1, b.z1);
+    label(z, b);
+  });
+  // 中央走道（只有地板，沒有牆）
+  floorBox(tx(HALL[0]), tx(HALL[0] + HALL[2]), tz(HALL[1]), tz(HALL[1] + HALL[3]), '#fffdf7');
+
+  // ---- 相機 ----
+  const S = { mode: 'over', az: 0.6, pol: 0.95, dist: 13, yaw: 0, pit: 0, room: null };
+  function place() {
+    if (S.mode === 'over') {
+      const sp = Math.sin(S.pol), cp = Math.cos(S.pol);
+      camera.position.set(S.dist * sp * Math.sin(S.az), S.dist * cp, S.dist * sp * Math.cos(S.az));
+      camera.lookAt(0, 0, 0);
+    } else {
+      camera.position.set(S.room.x, 1.6, S.room.z);
+      const dir = new THREE.Vector3(Math.sin(S.yaw) * Math.cos(S.pit), Math.sin(S.pit), -Math.cos(S.yaw) * Math.cos(S.pit));
+      camera.lookAt(camera.position.clone().add(dir));
+    }
+  }
+
+  function resize() {
+    const w = host.clientWidth || 360, h = host.clientHeight || 440;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  (function loop() { place(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+
+  // ---- 操作：拖曳、點選、滾輪 ----
+  let drag = null;
+  el.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0 }; el.setPointerCapture(e.pointerId); });
+  el.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
+    if (S.mode === 'over') { S.az -= dx * 0.01; S.pol = clamp(S.pol + dy * 0.008, 0.35, 1.4); }
+    else { S.yaw -= dx * 0.005; S.pit = clamp(S.pit - dy * 0.004, -1.1, 1.1); }
+  });
+  el.addEventListener('pointerup', e => {
+    const was = drag; drag = null;
+    if (was && was.moved < 8 && S.mode === 'over') pick(e);
+  });
+  el.addEventListener('wheel', e => {
+    if (S.mode !== 'over') return;
+    e.preventDefault();
+    S.dist = clamp(S.dist + e.deltaY * 0.01, 6, 22);
+  }, { passive: false });
+
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pick(e) {
+    const r = el.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects(floorMeshes, false);
+    if (!hits.length) return;
+    const z = hits[0].object.userData.zone;
+    selZone = selZone === z ? null : z;           // 與平面圖相同：點一次選取、再點一次取消
+    document.getElementById('q').value = '';
+    render();
+  }
+
+  // ---- 按鈕 ----
+  const btnWalk = document.getElementById('btnWalk'), btnOver = document.getElementById('btnOver'), hint = document.getElementById('hint');
+  function updateHud() {
+    const over = S.mode === 'over';
+    btnWalk.classList.toggle('hidden', !(over && selZone !== null));
+    btnOver.classList.toggle('hidden', over);
+    hint.textContent = over ? '拖曳旋轉・滾輪縮放・點房間選取' : '拖曳環顧四周';
+  }
+  btnWalk.addEventListener('click', () => {
+    if (selZone === null) return;
+    const b = bounds[selZone];
+    S.room = { x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2 };
+    S.yaw = 0; S.pit = 0; S.mode = 'walk';
+    updateHud();
+  });
+  btnOver.addEventListener('click', () => { S.mode = 'over'; updateHud(); });
+
+  // ---- 切換 3D / 平面 ----
+  const vt3d = document.getElementById('vt3d'), vt2d = document.getElementById('vt2d');
+  function setView(is3) {
+    document.getElementById('stage2d').style.display = is3 ? 'none' : '';
+    document.getElementById('stage3d').style.display = is3 ? '' : 'none';
+    vt3d.classList.toggle('primary', is3);
+    vt2d.classList.toggle('primary', !is3);
+    if (is3) resize();
+  }
+  vt3d.addEventListener('click', () => setView(true));
+  vt2d.addEventListener('click', () => setView(false));
+
+  // ---- 依搜尋與選取更新房間顏色（主程式 render() 會呼叫）----
+  window.__update3D = function () {
+    const q = document.getElementById('q').value.trim().toLowerCase();
+    const hit = new Set(items.filter(it => matches(it, q)).map(it => it.zone));
+    Object.keys(floorMats).forEach(k => {
+      const z = Number(k);
+      const c = (!!q && hit.has(z)) ? '#ffe066' : (selZone === z ? '#ffb3cc' : PAST[z]);
+      floorMats[z].color.set(c);
+    });
+    updateHud();
+  };
+  window.__update3D();
+})();
 </script>
 </body>
 </html>
