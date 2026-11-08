@@ -74,15 +74,6 @@ const CONFIG = {
       icon: "🧾"
     },
     {
-      id: "home_items",
-      title: "家裡物品",
-      url: "https://simon6314.github.io/portal_all/home_items/",
-      isPublic: false,
-      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
-      description: "家中物品位置查詢，點格局圖區塊或搜尋即可找到東西",
-      icon: "🏠"
-    },
-    {
       id: "canada_honeymoon",
       title: "蜜月行程",
       url: "https://simon6314.github.io/canada_honeymoon/index.html",
