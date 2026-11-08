@@ -106,7 +106,7 @@
       <select id="appRoute" class="grow" aria-label="路線"></select>
     </div>
     <div id="appList" style="margin-top:8px"></div>
-    <div class="note">標示依 Tpass 說明：台鐵適用「指定區間與車種」，區間、區間快標為「可搭（以官方為準）」；自強、莒光、普悠瑪、太魯閣等對號車標為「需確認」；起訖站不在竹竹苗（新竹市、新竹縣、苗栗縣）範圍的標為「超出範圍」。範圍以站號判斷，包含湖口到竹南，以及談文到三義的苗栗車站，邊界站請以官方為準。</div>
+    <div class="note">標示依 Tpass 說明：台鐵適用「指定區間與車種」，區間、區間快標為「可搭（以官方為準）」；自強、莒光、普悠瑪、太魯閣等對號車標為「需確認」；起訖站不在竹竹苗（新竹市、新竹縣、苗栗縣）範圍的標為「超出範圍」。範圍以站號判斷，包含北湖到竹南，以及談文到三義的苗栗車站，邊界站請以官方為準。</div>
   </section>
 </div>
 
@@ -176,10 +176,10 @@
     try { sessionStorage.setItem(KEY_STATIONS, JSON.stringify(stations)); } catch (e) { /* ignore */ }
   }
 
-  // 竹竹苗範圍（依站號判斷：湖口到竹南，以及談文到三義）
+  // 竹竹苗範圍（依站號判斷：北湖到竹南，以及談文到三義）
   function inZone(id) {
     const n = Number(id);
-    return (n >= 1160 && n <= 1250) || (n >= 2110 && n <= 2190) || (n >= 3140 && n <= 3190);
+    return (n >= 1150 && n <= 1250) || (n >= 2110 && n <= 2190) || (n >= 3140 && n <= 3190);
   }
   function classify(t, from, to) {
     const regular = /^區間/.test(t.type || '');
