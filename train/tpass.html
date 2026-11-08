@@ -86,7 +86,10 @@
     <h2 id="h-log">記錄搭乘</h2>
     <div class="row">
       <input id="tDate" type="date" aria-label="搭乘日期">
-      <input id="tNo" type="text" inputmode="numeric" maxlength="6" placeholder="車次" aria-label="車次" style="width:110px">
+    </div>
+    <div class="row">
+      <button id="qA" class="btn" type="button">竹南 → 竹北</button>
+      <button id="qB" class="btn" type="button">竹北 → 竹南</button>
     </div>
     <div class="row">
       <select id="tFrom" class="grow" aria-label="出發站"></select>
@@ -94,7 +97,7 @@
       <select id="tTo" class="grow" aria-label="到達站"></select>
     </div>
     <div class="row">
-      <button id="tAdd" class="btn" type="button">新增</button>
+      <button id="tAdd" class="btn ghost" type="button">新增其他路線</button>
       <span id="tMsg" class="sub"></span>
     </div>
     <div id="tripList" style="margin-top:10px"></div>
@@ -246,15 +249,15 @@
 
   // ---------- 搭乘記錄 ----------
   function renderTrips() {
-    const list = [...data.trips].sort((a, b) => (b.date + b.no).localeCompare(a.date + a.no));
+    const list = [...data.trips].sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
     $('tripList').innerHTML = list.length ? list.map(t => {
       const c = inZone(t.from) && inZone(t.to)
-        ? { cls: 'ask', text: '範圍內（車種需確認）' }
+        ? { cls: 'ok', text: '範圍內' }
         : { cls: 'no', text: '超出範圍' };
       return `
         <div class="trip">
           <div>
-            <div>${esc(t.date.replace(/-/g, '/'))} · ${esc(t.no)} 次</div>
+            <div>${esc(t.date.replace(/-/g, '/'))}</div>
             <div class="sub">${esc(nameOf(t.from))} → ${esc(nameOf(t.to))}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -322,21 +325,21 @@
     saveData();
     renderValid(); renderUsage();
   });
-  $('tAdd').addEventListener('click', () => {
+  function addTrip(from, to) {
     const msg = $('tMsg');
     const date = $('tDate').value;
-    const no = $('tNo').value.trim();
-    const from = $('tFrom').value;
-    const to = $('tTo').value;
     msg.textContent = '';
     if (!date) { msg.textContent = '請選日期。'; return; }
-    if (!no) { msg.textContent = '請輸入車次。'; return; }
     if (from === to) { msg.textContent = '出發站和到達站不能相同。'; return; }
-    data.trips.push({ id: String(Date.now()), date, no, from, to, type: '' });
+    data.trips.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), date, from, to });
     saveData();
-    $('tNo').value = '';
+    msg.textContent = `已記錄 ${nameOf(from)} → ${nameOf(to)}`;
     renderTrips(); renderUsage();
-  });
+  }
+  // 常用路線：一鍵記錄（竹南 1250、竹北 1180）
+  $('qA').addEventListener('click', () => addTrip('1250', '1180'));
+  $('qB').addEventListener('click', () => addTrip('1180', '1250'));
+  $('tAdd').addEventListener('click', () => addTrip($('tFrom').value, $('tTo').value));
   $('tripList').addEventListener('click', e => {
     const b = e.target.closest('[data-id]');
     if (!b) return;
