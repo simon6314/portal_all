@@ -8,7 +8,7 @@
   :root { --fg:#5b4b72; --muted:#9a8db3; --card:#ffffff; --accent:#ff7aa2; --hit:#ffe066; }
   * { -webkit-tap-highlight-color: transparent; }
   body { margin:0; color:var(--fg); font-family:"Noto Sans TC", system-ui, sans-serif; font-size:15px;
-         background: linear-gradient(180deg,#fff7f1 0%,#f4f0ff 100%) fixed; min-height:100vh; }
+         background: linear-gradient(180deg,#fff7f1 0%,#f4f0ff 100%); min-height:100vh; }
   .wrap { max-width:720px; margin:0 auto; padding:18px 16px 40px; }
   h1 { font-family:"ZCOOL KuaiLe","Noto Sans TC",sans-serif; font-size:26px; color:#ff6f9c; margin:4px 0 14px; text-align:center; letter-spacing:1px; }
   input, select, textarea { width:100%; box-sizing:border-box; padding:10px 14px; border:2px solid #efe3f7; border-radius:14px; background:#fff; font:inherit; color:var(--fg); }
@@ -22,11 +22,12 @@
   button:disabled { opacity:.6; }
   .bar { display:flex; gap:10px; margin-bottom:14px; }
   .bar input { flex:1; border-radius:999px; }
-  svg { width:100%; height:auto; display:block; margin:0 0 14px; padding:10px; box-sizing:border-box; background:#ffffffaa; border-radius:24px; box-shadow:0 6px 18px rgba(160,120,200,.14); }
+  .bar button { border-radius:999px; }
+  svg { width:100%; height:auto; display:block; margin:0 0 14px; background:#ffffffaa; border-radius:24px; padding:8px; box-sizing:border-box; box-shadow:0 6px 18px rgba(160,120,200,.14); }
   .room { fill:var(--c); stroke:#b59ad8; stroke-width:2.5; cursor:pointer; transition:fill .2s; }
   .room:hover { filter:brightness(1.04); }
   .room.hit { fill:var(--hit); animation:bob .7s ease-in-out infinite alternate; transform-box:fill-box; transform-origin:center; }
-  .room.sel { stroke:#ff6f9c; stroke-width:5; }
+  .room.sel { stroke:#ff5c8d; stroke-width:5; }
   @keyframes bob { from { transform:scale(1); } to { transform:scale(1.025); } }
   .hall { fill:#fffdf7; stroke:#c9b6e0; stroke-width:2; stroke-dasharray:8 6; }
   .num { font-size:22px; font-weight:700; fill:#5b4b72; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
@@ -44,19 +45,8 @@
   .full { grid-column:1 / -1; }
   .muted { color:var(--muted); font-size:13px; }
   .err { color:#e0457b; font-size:13px; }
-
-  .viewtoggle { display:flex; gap:8px; justify-content:center; margin:6px 0 10px; }
-  .viewtoggle button { min-width:92px; }
-  .stage3d { position:relative; margin:0 0 16px; }
-  #c3d { width:100%; height:440px; border-radius:24px; overflow:hidden; background:#fff7f1; box-shadow:0 6px 18px rgba(160,120,200,.14); }
-  #c3d canvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
-  .hud { display:flex; gap:8px; align-items:center; justify-content:space-between; margin-top:10px; flex-wrap:wrap; }
-  .hud .hint { color:var(--muted); font-size:13px; }
   .hidden { display:none !important; }
   #setup p.muted { margin:10px 2px 0; }
-  .stage { perspective:800px; margin:10px 0 30px; padding:30px 0 50px; }
-  .stage svg { transform:rotateX(60deg); transform-origin:50% 60%; transform-style:preserve-3d; margin:0 auto; max-width:700px; filter:drop-shadow(0 26px 22px rgba(90,60,140,.28)); }
-  .wall { stroke:#5d4a86; stroke-width:1.2; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -77,203 +67,22 @@
     <button id="settingsBtn" title="連線設定">⚙</button>
   </div>
 
-  <div class="viewtoggle"><button id="vt3d" class="primary">立體</button><button id="vt2d">平面</button></div>
-  <div class="stage" id="stage2d" style="display:none"><svg viewBox="60 860 830 550" role="img" aria-label="格局圖">
+  <svg viewBox="60 860 830 550" role="img" aria-label="格局圖">
     <rect class="hall" x="163" y="969" width="400" height="145" rx="18"/>
-    <rect class="wall" style="fill:#6e5a9e" x="73" y="915" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="73" y="912" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="73" y="909" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="73" y="906" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="73" y="903" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="73" y="900" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="73" y="897" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="73" y="894" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="73" y="891" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="73" y="888" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="73" y="885" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="73" y="882" width="90" height="90" rx="12"/>
     <rect class="room" data-z="1" style="--c:#ffe3ec" x="73" y="879" width="90" height="90" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="163" y="915" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="163" y="912" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="163" y="909" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="163" y="906" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="163" y="903" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="163" y="900" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="163" y="897" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="163" y="894" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="163" y="891" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="163" y="888" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="163" y="885" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="163" y="882" width="109" height="90" rx="12"/>
     <rect class="room" data-z="2" style="--c:#e6dcff" x="163" y="879" width="109" height="90" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="272" y="915" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="272" y="912" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="272" y="909" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="272" y="906" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="272" y="903" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="272" y="900" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="272" y="897" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="272" y="894" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="272" y="891" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="272" y="888" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="272" y="885" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="272" y="882" width="127" height="90" rx="12"/>
     <rect class="room" data-z="3" style="--c:#ffd9ec" x="272" y="879" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="399" y="915" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#7763a5" x="399" y="912" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#806dac" x="399" y="909" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#8976b2" x="399" y="906" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#9280b9" x="399" y="903" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#9b89c0" x="399" y="900" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#a492c6" x="399" y="897" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#ac9ccd" x="399" y="894" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#b5a5d4" x="399" y="891" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#beafdb" x="399" y="888" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#c7b8e2" x="399" y="885" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#d0c2e8" x="399" y="882" width="37" height="90" rx="10"/>
     <rect class="room" data-z="4" style="--c:#d3f1ff" x="399" y="879" width="37" height="90" rx="10"/>
-    <rect class="wall" style="fill:#6e5a9e" x="436" y="915" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="436" y="912" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="436" y="909" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="436" y="906" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="436" y="903" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="436" y="900" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="436" y="897" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="436" y="894" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="436" y="891" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="436" y="888" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="436" y="885" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="436" y="882" width="127" height="90" rx="12"/>
     <rect class="room" data-z="5" style="--c:#ffe2b8" x="436" y="879" width="127" height="90" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="563" y="915" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="563" y="912" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="563" y="909" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="563" y="906" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="563" y="903" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="563" y="900" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="563" y="897" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="563" y="894" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="563" y="891" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="563" y="888" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="563" y="885" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="563" y="882" width="91" height="199" rx="12"/>
     <rect class="room" data-z="6" style="--c:#d5f8c9" x="563" y="879" width="91" height="199" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="73" y="1024" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="73" y="1021" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="73" y="1018" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="73" y="1015" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="73" y="1012" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="73" y="1009" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="73" y="1006" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="73" y="1003" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="73" y="1000" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="73" y="997" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="73" y="994" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="73" y="991" width="90" height="108" rx="12"/>
     <rect class="room" data-z="7" style="--c:#fff3b0" x="73" y="988" width="90" height="108" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="73" y="1132" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#7763a5" x="73" y="1129" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#806dac" x="73" y="1126" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#8976b2" x="73" y="1123" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#9280b9" x="73" y="1120" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#9b89c0" x="73" y="1117" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#a492c6" x="73" y="1114" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#ac9ccd" x="73" y="1111" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#b5a5d4" x="73" y="1108" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#beafdb" x="73" y="1105" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#c7b8e2" x="73" y="1102" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#d0c2e8" x="73" y="1099" width="90" height="91" rx="12"/>
     <rect class="room" data-z="8" style="--c:#e6dcff" x="73" y="1096" width="90" height="91" rx="12"/>
-    <rect class="wall" style="fill:#6e5a9e" x="73" y="1223" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#7763a5" x="73" y="1220" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#806dac" x="73" y="1217" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#8976b2" x="73" y="1214" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#9280b9" x="73" y="1211" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#9b89c0" x="73" y="1208" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#a492c6" x="73" y="1205" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#ac9ccd" x="73" y="1202" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#b5a5d4" x="73" y="1199" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#beafdb" x="73" y="1196" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#c7b8e2" x="73" y="1193" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#d0c2e8" x="73" y="1190" width="217" height="200" rx="14"/>
     <rect class="room" data-z="9" style="--c:#ffdede" x="73" y="1187" width="217" height="200" rx="14"/>
-    <rect class="wall" style="fill:#6e5a9e" x="290" y="1150" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#7763a5" x="290" y="1147" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#806dac" x="290" y="1144" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#8976b2" x="290" y="1141" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#9280b9" x="290" y="1138" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#9b89c0" x="290" y="1135" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#a492c6" x="290" y="1132" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#ac9ccd" x="290" y="1129" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#b5a5d4" x="290" y="1126" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#beafdb" x="290" y="1123" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#c7b8e2" x="290" y="1120" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#d0c2e8" x="290" y="1117" width="236" height="273" rx="14"/>
     <rect class="room" data-z="10" style="--c:#d6ebff" x="290" y="1114" width="236" height="273" rx="14"/>
-    <rect class="wall" style="fill:#6e5a9e" x="526" y="1150" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#7763a5" x="526" y="1147" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#806dac" x="526" y="1144" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#8976b2" x="526" y="1141" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#9280b9" x="526" y="1138" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#9b89c0" x="526" y="1135" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#a492c6" x="526" y="1132" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#ac9ccd" x="526" y="1129" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#b5a5d4" x="526" y="1126" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#beafdb" x="526" y="1123" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#c7b8e2" x="526" y="1120" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#d0c2e8" x="526" y="1117" width="37" height="109" rx="10"/>
     <rect class="room" data-z="11" style="--c:#fff3b0" x="526" y="1114" width="37" height="109" rx="10"/>
-    <rect class="wall" style="fill:#6e5a9e" x="526" y="1259" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#7763a5" x="526" y="1256" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#806dac" x="526" y="1253" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#8976b2" x="526" y="1250" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#9280b9" x="526" y="1247" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#9b89c0" x="526" y="1244" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#a492c6" x="526" y="1241" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#ac9ccd" x="526" y="1238" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#b5a5d4" x="526" y="1235" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#beafdb" x="526" y="1232" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#c7b8e2" x="526" y="1229" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#d0c2e8" x="526" y="1226" width="64" height="109" rx="10"/>
     <rect class="room" data-z="12" style="--c:#c9e6ff" x="526" y="1223" width="64" height="109" rx="10"/>
-    <rect class="wall" style="fill:#6e5a9e" x="590" y="1241" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#7763a5" x="590" y="1238" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#806dac" x="590" y="1235" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#8976b2" x="590" y="1232" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#9280b9" x="590" y="1229" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#9b89c0" x="590" y="1226" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#a492c6" x="590" y="1223" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#ac9ccd" x="590" y="1220" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#b5a5d4" x="590" y="1217" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#beafdb" x="590" y="1214" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#c7b8e2" x="590" y="1211" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#d0c2e8" x="590" y="1208" width="64" height="127" rx="10"/>
     <rect class="room" data-z="13" style="--c:#fff3b0" x="590" y="1205" width="64" height="127" rx="10"/>
-    <rect class="wall" style="fill:#6e5a9e" x="526" y="1368" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#7763a5" x="526" y="1365" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#806dac" x="526" y="1362" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#8976b2" x="526" y="1359" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#9280b9" x="526" y="1356" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#9b89c0" x="526" y="1353" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#a492c6" x="526" y="1350" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#ac9ccd" x="526" y="1347" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#b5a5d4" x="526" y="1344" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#beafdb" x="526" y="1341" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#c7b8e2" x="526" y="1338" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#d0c2e8" x="526" y="1335" width="128" height="55" rx="10"/>
     <rect class="room" data-z="14" style="--c:#c9e6ff" x="526" y="1332" width="128" height="55" rx="10"/>
-    <rect class="wall" style="fill:#6e5a9e" x="654" y="1114" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#7763a5" x="654" y="1111" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#806dac" x="654" y="1108" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#8976b2" x="654" y="1105" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#9280b9" x="654" y="1102" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#9b89c0" x="654" y="1099" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#a492c6" x="654" y="1096" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#ac9ccd" x="654" y="1093" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#b5a5d4" x="654" y="1090" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#beafdb" x="654" y="1087" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#c7b8e2" x="654" y="1084" width="218" height="309" rx="14"/>
-    <rect class="wall" style="fill:#d0c2e8" x="654" y="1081" width="218" height="309" rx="14"/>
     <rect class="room" data-z="15" style="--c:#c7f5e6" x="654" y="1078" width="218" height="309" rx="14"/>
     <text class="num" x="118" y="910">1</text><text class="emo" x="118" y="942">🧹</text>
     <text class="num" x="217" y="910">2</text><text class="emo" x="217" y="942">🧥</text>
@@ -291,15 +100,7 @@
     <text class="num" x="590" y="1359">14</text>
     <text class="num" x="763" y="1218">15</text><text class="emo" x="763" y="1248">🚿</text>
     <text class="num" x="363" y="1030" style="fill:#9a8db3">16</text><text class="emo" x="363" y="1060">🚶</text>
-  </svg></div>
-  <div class="stage3d" id="stage3d">
-    <div id="c3d"></div>
-    <div class="hud">
-      <button class="primary" id="btnWalk">🚶 走進去</button>
-      <button id="btnOver" class="hidden">🗺️ 回俯瞰</button>
-      <span class="hint" id="hint">拖曳旋轉・點房間選取</span>
-    </div>
-  </div>
+  </svg>
 
   <div class="card" id="panel">
     <h2 id="panelTitle">點地圖上的區塊，或直接搜尋</h2>
@@ -323,7 +124,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const ZONES = {
   1: '角落收納空間', 2: '衣櫥', 3: '電腦化妝桌', 4: '冰箱', 5: '流理台',
@@ -434,7 +234,6 @@ function render() {
     zs.innerHTML = Object.keys(ZONES).map(k => `<option value="${k}">${k} · ${ZONES[k]}</option>`).join('');
   }
   if (!editId && selZone !== null) zs.value = String(selZone);
-  if (window.__update3D) window.__update3D();
 }
 
 document.getElementById('list').addEventListener('click', async e => {
@@ -523,206 +322,6 @@ document.getElementById('cfgSave').addEventListener('click', async () => {
 loadCfg();
 if (!cfg.token) document.getElementById('setup').classList.remove('hidden');
 reload();
-</script>
-<script>
-(function () {
-  if (typeof THREE === 'undefined') { console.warn('three.js 未載入'); return; }
-
-  // 格局圖座標（與 SVG 相同）→ 真實尺寸：橫向 10 公尺（長）、縱向 5 公尺（寬），牆高 300cm
-  const RECTS = {
-    1:[73,879,90,90], 2:[163,879,109,90], 3:[272,879,127,90], 4:[399,879,37,90],
-    5:[436,879,127,90], 6:[563,879,91,199], 7:[73,988,90,108], 8:[73,1096,90,91],
-    9:[73,1187,217,200], 10:[290,1114,236,273], 11:[526,1114,37,109], 12:[526,1223,64,109],
-    13:[590,1205,64,127], 14:[526,1332,128,55], 15:[654,1078,218,309]
-  };
-  const HALL = [163,969,400,145];
-  const PAST = {1:'#ffe3ec',2:'#e6dcff',3:'#ffd9ec',4:'#d3f1ff',5:'#ffe2b8',6:'#d5f8c9',7:'#fff3b0',8:'#e6dcff',9:'#ffdede',10:'#d6ebff',11:'#fff3b0',12:'#c9e6ff',13:'#fff3b0',14:'#c9e6ff',15:'#c7f5e6'};
-  const EMO = {1:'🧹',2:'🧥',3:'💻',4:'🧊',5:'🍳',6:'🧺',7:'📚',8:'👔',9:'🧶',10:'🛏️',11:'📦',12:'👕',13:'📦',14:'🧥',15:'🚿'};
-  const PLAN = { x0:73, x1:872, y0:879, y1:1387 };
-  const REAL_W = 10, REAL_D = 5, WALL_H = 3.0, WALL_T = 0.12;
-  const tx = u => (u - PLAN.x0) / (PLAN.x1 - PLAN.x0) * REAL_W - REAL_W / 2;
-  const tz = v => (v - PLAN.y0) / (PLAN.y1 - PLAN.y0) * REAL_D - REAL_D / 2;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-  const host = document.getElementById('c3d');
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  host.appendChild(renderer.domElement);
-  const el = renderer.domElement;
-
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#fff7f1');
-  scene.fog = new THREE.Fog('#fff7f1', 16, 34);
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 100);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.6);
-  sun.position.set(4, 10, 6);
-  scene.add(sun);
-
-  const base = new THREE.Mesh(new THREE.BoxGeometry(REAL_W + 1.2, 0.05, REAL_D + 1.2),
-    new THREE.MeshStandardMaterial({ color: 0xefe6fb }));
-  base.position.y = -0.03;
-  scene.add(base);
-
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xfffaf3, roughness: 0.9 });
-  const floorMats = {}, floorMeshes = [], bounds = {};
-
-  function floorBox(x0, x1, z0, z1, color) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.04, z1 - z0),
-      new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.8 }));
-    m.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
-    scene.add(m);
-    return m;
-  }
-
-  function wall(ax, az, bx, bz) {
-    const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
-    const m = new THREE.Mesh(new THREE.BoxGeometry(L + WALL_T, WALL_H, WALL_T), wallMat);
-    m.position.set((ax + bx) / 2, WALL_H / 2, (az + bz) / 2);
-    m.rotation.y = Math.atan2(-dz, dx);
-    scene.add(m);
-  }
-
-  function label(z, b) {
-    const w = b.x1 - b.x0, d = b.z1 - b.z0;
-    if (w < 0.8 || d < 0.8) return;               // 太小的格子不放文字
-    const aspect = d / w;
-    let cw = 512, ch = Math.round(512 * aspect);
-    if (ch > 512) { ch = 512; cw = Math.round(512 / aspect); }
-    const cv = document.createElement('canvas');
-    cv.width = cw; cv.height = ch;
-    const g = cv.getContext('2d');
-    g.clearRect(0, 0, cw, ch);
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = '#5b4b72';
-    g.font = 'bold ' + Math.round(ch * 0.28) + 'px "Noto Sans TC", sans-serif';
-    g.fillText(z + ' ' + (EMO[z] || ''), cw / 2, ch * 0.38);
-    g.font = Math.round(ch * 0.16) + 'px "Noto Sans TC", sans-serif';
-    g.fillText(ZONES[z], cw / 2, ch * 0.72);
-    const tex = new THREE.CanvasTexture(cv);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.9, d * 0.9),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
-    plane.rotation.x = -Math.PI / 2;
-    plane.position.set((b.x0 + b.x1) / 2, 0.05, (b.z0 + b.z1) / 2);
-    scene.add(plane);
-  }
-
-  // 建房間：地板 + 四面 300cm 牆
-  Object.keys(RECTS).forEach(k => {
-    const z = Number(k), [x, y, w, h] = RECTS[k];
-    const b = { x0: tx(x), x1: tx(x + w), z0: tz(y), z1: tz(y + h) };
-    bounds[z] = b;
-    const m = floorBox(b.x0, b.x1, b.z0, b.z1, PAST[z]);
-    m.userData.zone = z;
-    floorMats[z] = m.material;
-    floorMeshes.push(m);
-    wall(b.x0, b.z0, b.x1, b.z0); wall(b.x0, b.z1, b.x1, b.z1);
-    wall(b.x0, b.z0, b.x0, b.z1); wall(b.x1, b.z0, b.x1, b.z1);
-    label(z, b);
-  });
-  // 中央走道（只有地板，沒有牆）
-  floorBox(tx(HALL[0]), tx(HALL[0] + HALL[2]), tz(HALL[1]), tz(HALL[1] + HALL[3]), '#fffdf7');
-
-  // ---- 相機 ----
-  const S = { mode: 'over', az: 0.6, pol: 0.95, dist: 13, yaw: 0, pit: 0, room: null };
-  function place() {
-    if (S.mode === 'over') {
-      const sp = Math.sin(S.pol), cp = Math.cos(S.pol);
-      camera.position.set(S.dist * sp * Math.sin(S.az), S.dist * cp, S.dist * sp * Math.cos(S.az));
-      camera.lookAt(0, 0, 0);
-    } else {
-      camera.position.set(S.room.x, 1.6, S.room.z);
-      const dir = new THREE.Vector3(Math.sin(S.yaw) * Math.cos(S.pit), Math.sin(S.pit), -Math.cos(S.yaw) * Math.cos(S.pit));
-      camera.lookAt(camera.position.clone().add(dir));
-    }
-  }
-
-  function resize() {
-    const w = host.clientWidth || 360, h = host.clientHeight || 440;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  (function loop() { place(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
-
-  // ---- 操作：拖曳、點選、滾輪 ----
-  let drag = null;
-  el.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0 }; el.setPointerCapture(e.pointerId); });
-  el.addEventListener('pointermove', e => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-    if (S.mode === 'over') { S.az -= dx * 0.01; S.pol = clamp(S.pol + dy * 0.008, 0.35, 1.4); }
-    else { S.yaw -= dx * 0.005; S.pit = clamp(S.pit - dy * 0.004, -1.1, 1.1); }
-  });
-  el.addEventListener('pointerup', e => {
-    const was = drag; drag = null;
-    if (was && was.moved < 8 && S.mode === 'over') pick(e);
-  });
-  el.addEventListener('wheel', e => {
-    if (S.mode !== 'over') return;
-    e.preventDefault();
-    S.dist = clamp(S.dist + e.deltaY * 0.01, 6, 22);
-  }, { passive: false });
-
-  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-  function pick(e) {
-    const r = el.getBoundingClientRect();
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(ndc, camera);
-    const hits = ray.intersectObjects(floorMeshes, false);
-    if (!hits.length) return;
-    const z = hits[0].object.userData.zone;
-    selZone = selZone === z ? null : z;           // 與平面圖相同：點一次選取、再點一次取消
-    document.getElementById('q').value = '';
-    render();
-  }
-
-  // ---- 按鈕 ----
-  const btnWalk = document.getElementById('btnWalk'), btnOver = document.getElementById('btnOver'), hint = document.getElementById('hint');
-  function updateHud() {
-    const over = S.mode === 'over';
-    btnWalk.classList.toggle('hidden', !(over && selZone !== null));
-    btnOver.classList.toggle('hidden', over);
-    hint.textContent = over ? '拖曳旋轉・滾輪縮放・點房間選取' : '拖曳環顧四周';
-  }
-  btnWalk.addEventListener('click', () => {
-    if (selZone === null) return;
-    const b = bounds[selZone];
-    S.room = { x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2 };
-    S.yaw = 0; S.pit = 0; S.mode = 'walk';
-    updateHud();
-  });
-  btnOver.addEventListener('click', () => { S.mode = 'over'; updateHud(); });
-
-  // ---- 切換 3D / 平面 ----
-  const vt3d = document.getElementById('vt3d'), vt2d = document.getElementById('vt2d');
-  function setView(is3) {
-    document.getElementById('stage2d').style.display = is3 ? 'none' : '';
-    document.getElementById('stage3d').style.display = is3 ? '' : 'none';
-    vt3d.classList.toggle('primary', is3);
-    vt2d.classList.toggle('primary', !is3);
-    if (is3) resize();
-  }
-  vt3d.addEventListener('click', () => setView(true));
-  vt2d.addEventListener('click', () => setView(false));
-
-  // ---- 依搜尋與選取更新房間顏色（主程式 render() 會呼叫）----
-  window.__update3D = function () {
-    const q = document.getElementById('q').value.trim().toLowerCase();
-    const hit = new Set(items.filter(it => matches(it, q)).map(it => it.zone));
-    Object.keys(floorMats).forEach(k => {
-      const z = Number(k);
-      const c = (!!q && hit.has(z)) ? '#ffe066' : (selZone === z ? '#ffb3cc' : PAST[z]);
-      floorMats[z].color.set(c);
-    });
-    updateHud();
-  };
-  window.__update3D();
-})();
 </script>
 </body>
 </html>
