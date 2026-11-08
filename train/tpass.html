@@ -91,6 +91,18 @@
   <section class="card" aria-labelledby="h-fare">
     <h2 id="h-fare">票價與試算</h2>
     <div class="row">
+      <label class="sub grow">車種（全票單程）
+        <select id="fareType" class="fare-in" aria-label="車種">
+          <option value="區間">區間（53 元）</option>
+          <option value="區間快">區間快（53 元）</option>
+          <option value="莒光">莒光（64 元）</option>
+          <option value="推拉式自強">推拉式自強（83 元）</option>
+          <option value="自強3000">自強 3000（83 元）</option>
+          <option value="普悠瑪">普悠瑪（83 元）</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
       <label class="sub grow">竹南 → 竹北 單程（元）<input id="fareA" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填"></label>
       <label class="sub grow">竹北 → 竹南 單程（元）<input id="fareB" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填"></label>
     </div>
@@ -98,7 +110,7 @@
       <label class="sub grow">Tpass 價格（元）<input id="passPrice" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填，例如 1200"></label>
     </div>
     <div id="calcBox"></div>
-    <div class="note">票價請依台鐵官方票價填寫，Tpass 價格請依你購買的版本填寫。試算只計算本期內的記錄；沒有票價的記錄不會計入原價，會另外提示。</div>
+    <div class="note">票價來源：TDX 台鐵票價（2026-10-04 生效），全票單程。竹北 → 竹南 未另外查證，假設與竹南 → 竹北相同。可以手動修改數字。Tpass 價格請依你購買的版本填寫。沒有票價的記錄不會計入原價，會另外提示。</div>
   </section>
 
   <section class="card" aria-labelledby="h-log">
@@ -147,6 +159,17 @@
   ];
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // 竹南↔竹北 全票單程票價（TDX 台鐵票價 2026-10-04 生效，順行 24.5 公里）
+  // 竹北→竹南 未另外查證，假設與竹南→竹北相同
+  const FARE_TABLE = {
+    '區間': 53,
+    '區間快': 53,
+    '莒光': 64,
+    '推拉式自強': 83,
+    '自強3000': 83,
+    '普悠瑪': 83
+  };
 
   let stations = [];
   let data = { activated: '', trips: [], fares: {}, passPrice: '' };
@@ -281,6 +304,7 @@
     return typeof f === 'number' && f >= 0 ? f : null;
   }
   function renderFare() {
+    $('fareType').value = data.fareType || '區間';
     $('fareA').value = data.fares['1250-1180'] ?? '';
     $('fareB').value = data.fares['1180-1250'] ?? '';
     $('passPrice').value = data.passPrice ?? '';
@@ -315,8 +339,24 @@
       ${breakeven}
       ${missing ? `<div class="warn-text">有 ${missing} 趟沒有票價，未計入原價。</div>` : ''}`;
   }
+  $('fareType').addEventListener('change', e => {
+    data.fareType = e.target.value;
+    const v = FARE_TABLE[e.target.value];
+    data.fares['1250-1180'] = v;
+    data.fares['1180-1250'] = v;
+    saveData(); renderFare(); renderTrips();
+  });
   $('fareA').addEventListener('change', e => setFare('1250-1180', e.target.value));
   $('fareB').addEventListener('change', e => setFare('1180-1250', e.target.value));
+  function applyDefaultFare() {
+    if (data.fares['1250-1180'] === undefined && data.fares['1180-1250'] === undefined) {
+      const t = data.fareType || '區間';
+      data.fareType = t;
+      data.fares['1250-1180'] = FARE_TABLE[t];
+      data.fares['1180-1250'] = FARE_TABLE[t];
+      saveData();
+    }
+  }
   function setFare(key, v) {
     if (v === '') delete data.fares[key];
     else data.fares[key] = Math.max(0, Number(v));
@@ -438,6 +478,7 @@
   // ---------- 啟動 ----------
   async function init() {
     loadData();
+    applyDefaultFare();
     const today = todayTaipei();
     $('tDate').value = today;
     $('actDate').value = data.activated || '';
