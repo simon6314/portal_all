@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<title>Tpass 狀態</title>
+<style>
+  :root {
+    --bg: #0b1220; --card: #131c2e; --text: #f1f5f9; --sub: #94a3b8;
+    --line: rgba(255, 255, 255, 0.08); --accent: #38bdf8; --accent-2: #facc15;
+    --danger: #f87171; --ok: #22c55e;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --sub: #64748b;
+      --line: rgba(15, 23, 42, 0.08); --accent: #0284c7; --accent-2: #b45309;
+      --danger: #dc2626; --ok: #16a34a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: "Noto Sans TC", system-ui, -apple-system, sans-serif; min-height: 100vh; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 16px 16px 40px; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .top h1 { margin: 0; font-size: 1.35rem; }
+  .top a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 10px; font-size: 1rem; }
+  .sub { color: var(--sub); font-size: 0.85rem; }
+  .big { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; margin: 4px 0; }
+  .bar { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
+  .bar > div { height: 100%; background: var(--accent); }
+  .bar > div.warn { background: var(--danger); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .row > * { min-width: 0; }
+  input, select {
+    padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg);
+    color: var(--text); font-size: 0.95rem;
+  }
+  .grow { flex: 1; }
+  .btn { padding: 9px 14px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--sub); border: 1px solid var(--line); }
+  .trip { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 0.9rem; }
+  .trip:first-of-type { border-top: 0; }
+  .del { border: 0; background: transparent; color: var(--sub); font-size: 1.1rem; cursor: pointer; }
+  .del:hover { color: var(--danger); }
+  .tag { font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+  .tag.ok { color: var(--ok); }
+  .tag.no { color: var(--danger); }
+  .tag.ask { color: var(--accent-2); }
+  .train { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 0.9rem; }
+  .train:first-of-type { border-top: 0; }
+  .times { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .note { color: var(--sub); font-size: 0.78rem; margin-top: 10px; line-height: 1.5; }
+  .empty { color: var(--sub); font-size: 0.9rem; padding: 6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Tpass 狀態</h1>
+    <a href="index.html">← 火車時刻</a>
+  </header>
+
+  <section class="card" aria-labelledby="h-valid">
+    <h2 id="h-valid">效期</h2>
+    <div class="row">
+      <span class="sub">啟用日（首次搭乘的日期）</span>
+    </div>
+    <div class="row">
+      <input id="actDate" type="date" class="grow" aria-label="啟用日">
+      <button id="actSave" class="btn" type="button">儲存</button>
+      <button id="actClear" class="btn ghost" type="button">清除</button>
+    </div>
+    <div id="validBox" style="margin-top:12px"></div>
+    <div class="note">效期為啟用後連續 30 天（含啟用當天）。實際效期以卡面與票務公告為準。</div>
+  </section>
+
+  <section class="card" aria-labelledby="h-usage">
+    <h2 id="h-usage">本期搭乘統計</h2>
+    <div id="usageBox"></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-log">
+    <h2 id="h-log">記錄搭乘</h2>
+    <div class="row">
+      <input id="tDate" type="date" aria-label="搭乘日期">
+      <input id="tNo" type="text" inputmode="numeric" maxlength="6" placeholder="車次" aria-label="車次" style="width:110px">
+    </div>
+    <div class="row">
+      <select id="tFrom" class="grow" aria-label="出發站"></select>
+      <span class="sub">→</span>
+      <select id="tTo" class="grow" aria-label="到達站"></select>
+    </div>
+    <div class="row">
+      <button id="tAdd" class="btn" type="button">新增</button>
+      <span id="tMsg" class="sub"></span>
+    </div>
+    <div id="tripList" style="margin-top:10px"></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-app">
+    <h2 id="h-app">今天班次的 Tpass 適用標示</h2>
+    <div class="row">
+      <select id="appRoute" class="grow" aria-label="路線"></select>
+    </div>
+    <div id="appList" style="margin-top:8px"></div>
+    <div class="note">標示依 Tpass 說明：台鐵適用「指定區間與車種」，區間、區間快標為「可搭（以官方為準）」；自強、莒光、普悠瑪、太魯閣等對號車標為「需確認」；起訖站不在基北北桃範圍的標為「超出範圍」。範圍以站號判斷（基隆到富岡，以及瑞芳、猴硐），瑞芳以東的部分站未列入，請以官方為準。</div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const API = 'https://train-api.simon6314.workers.dev';
+  const KEY_TPASS = 'tpass_v1';
+  const KEY_ROUTES = 'train_routes_v1';
+  const KEY_STATIONS = 'train_stations_v1';
+  const DEFAULT_ROUTES = [
+    { from: '1250', to: '1000' }, { from: '1000', to: '1250' },
+    { from: '1250', to: '3300' }, { from: '3300', to: '1250' }
+  ];
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let stations = [];
+  let data = { activated: '', trips: [] };
+
+  // ---------- 儲存 ----------
+  function loadData() {
+    try {
+      const d = JSON.parse(localStorage.getItem(KEY_TPASS));
+      if (d && typeof d === 'object') data = { activated: d.activated || '', trips: Array.isArray(d.trips) ? d.trips : [] };
+    } catch (e) { /* 無法讀取時用空資料 */ }
+  }
+  function saveData() {
+    try { localStorage.setItem(KEY_TPASS, JSON.stringify(data)); } catch (e) { /* ignore */ }
+  }
+  function loadRoutes() {
+    try {
+      const r = JSON.parse(localStorage.getItem(KEY_ROUTES));
+      if (Array.isArray(r) && r.length) return r;
+    } catch (e) { /* ignore */ }
+    return DEFAULT_ROUTES.slice();
+  }
+
+  // ---------- 日期工具（台灣時間） ----------
+  function todayTaipei() {
+    return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
+  }
+  function addDays(s, n) {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+  }
+  function daysBetween(a, b) {
+    const [ay, am, ad] = a.split('-').map(Number);
+    const [by, bm, bd] = b.split('-').map(Number);
+    return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+  }
+  const fmtMD = s => s ? s.slice(5).replace('-', '/') : '';
+
+  // ---------- 車站 ----------
+  function nameOf(id) {
+    const s = stations.find(x => x.id === id);
+    return s ? s.name : id;
+  }
+  async function loadStations() {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(KEY_STATIONS));
+      if (Array.isArray(cached) && cached.length) { stations = cached; return; }
+    } catch (e) { /* ignore */ }
+    const res = await fetch(API + '/tra/stations');
+    const body = await res.json();
+    if (!res.ok || !Array.isArray(body.Stations)) throw new Error('無法取得車站資料');
+    stations = body.Stations.map(s => ({ id: s.StationID, name: s.StationName.Zh_tw }));
+    try { sessionStorage.setItem(KEY_STATIONS, JSON.stringify(stations)); } catch (e) { /* ignore */ }
+  }
+
+  // 基北北桃範圍（依站號判斷，基隆到富岡，外加瑞芳、猴硐）
+  function inZone(id) {
+    const n = Number(id);
+    return (n >= 900 && n <= 1130) || id === '7360' || id === '7350';
+  }
+  function classify(t, from, to) {
+    const regular = /^區間/.test(t.type || '');
+    const range = inZone(from) && inZone(to);
+    if (!range) return { cls: 'no', text: '超出範圍' };
+    if (regular) return { cls: 'ok', text: '可搭（以官方為準）' };
+    return { cls: 'ask', text: '需確認（對號車）' };
+  }
+
+  // ---------- 效期 ----------
+  function renderValid() {
+    const today = todayTaipei();
+    const box = $('validBox');
+    if (!data.activated) {
+      box.innerHTML = '<div class="empty">尚未設定啟用日。第一次搭乘後，把日期填入上方並儲存。</div>';
+      return;
+    }
+    const start = data.activated;
+    const end = addDays(start, 29);
+    const total = 30;
+    const used = Math.min(total, Math.max(0, daysBetween(start, today) + 1));
+    if (today < start) {
+      box.innerHTML = `<div class="big">尚未啟用</div><div class="sub">預計 ${fmtMD(start)} 啟用，效期至 ${fmtMD(end)}</div>`;
+      return;
+    }
+    if (today > end) {
+      box.innerHTML = `<div class="big" style="color:var(--danger)">已過期</div><div class="sub">效期至 ${fmtMD(end)}</div>`;
+      return;
+    }
+    const left = daysBetween(today, end) + 1;
+    const warn = left <= 3;
+    box.innerHTML = `
+      <div class="big" ${warn ? 'style="color:var(--danger)"' : ''}>剩餘 ${left} 天</div>
+      <div class="sub">啟用 ${fmtMD(start)}，效期至 ${fmtMD(end)}（含當天）</div>
+      <div class="bar"><div class="${warn ? 'warn' : ''}" style="width:${Math.round(used / total * 100)}%"></div></div>
+      <div class="sub">已用 ${used} / ${total} 天</div>`;
+  }
+
+  // ---------- 本期統計 ----------
+  function periodRange() {
+    const today = todayTaipei();
+    if (data.activated) {
+      return { start: data.activated, end: addDays(data.activated, 29), label: '本期（啟用後 30 天）' };
+    }
+    // 尚未啟用：以本月為範圍
+    const start = today.slice(0, 8) + '01';
+    return { start, end: addDays(start, 30), label: '本月（尚未設定啟用日）' };
+  }
+  function renderUsage() {
+    const { start, end, label } = periodRange();
+    const today = todayTaipei();
+    const inPeriod = data.trips.filter(t => t.date >= start && t.date <= end);
+    const todayCount = inPeriod.filter(t => t.date === today).length;
+    const days = new Set(inPeriod.map(t => t.date)).size;
+    $('usageBox').innerHTML = `
+      <div class="sub">${esc(label)}</div>
+      <div class="big">${inPeriod.length} 趟</div>
+      <div class="sub">共 ${days} 天有搭乘　·　今天 ${todayCount} 趟</div>
+      <div class="note">搭乘次數是你自己記錄的，Tpass 本身沒有次數限制，這裡只是方便回顧。</div>`;
+  }
+
+  // ---------- 搭乘記錄 ----------
+  function renderTrips() {
+    const list = [...data.trips].sort((a, b) => (b.date + b.no).localeCompare(a.date + a.no));
+    $('tripList').innerHTML = list.length ? list.map(t => {
+      const c = inZone(t.from) && inZone(t.to)
+        ? { cls: 'ask', text: '範圍內（車種需確認）' }
+        : { cls: 'no', text: '超出範圍' };
+      return `
+        <div class="trip">
+          <div>
+            <div>${esc(t.date.replace(/-/g, '/'))} · ${esc(t.no)} 次</div>
+            <div class="sub">${esc(nameOf(t.from))} → ${esc(nameOf(t.to))}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="tag ${c.cls}">${esc(c.text)}</span>
+            <button class="del" type="button" data-id="${esc(t.id)}" aria-label="刪除">×</button>
+          </div>
+        </div>`;
+    }).join('') : '<div class="empty">還沒有搭乘記錄。</div>';
+  }
+
+  // ---------- 今天班次適用標示 ----------
+  async function renderApplicable() {
+    const routes = loadRoutes();
+    const sel = $('appRoute');
+    const idx = Math.min(Number(sel.value || 0), routes.length - 1);
+    const route = routes[idx];
+    if (!route) { $('appList').innerHTML = '<div class="empty">請先到火車時刻頁新增路線。</div>'; return; }
+    $('appList').innerHTML = '<div class="empty">載入中…</div>';
+    try {
+      const date = todayTaipei();
+      const res = await fetch(`${API}/tra/timetable?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&date=${date}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || '載入失敗');
+      const rows = [];
+      (body.TrainTimetables || []).forEach(t => {
+        const stops = t.StopTimes || [];
+        const a = stops.find(s => s.StationID === route.from);
+        const b = stops.find(s => s.StationID === route.to);
+        if (!a || !b || a.StopSequence >= b.StopSequence) return;
+        const info = t.TrainInfo || {};
+        rows.push({ no: info.TrainNo || '', type: (info.TrainTypeName || {}).Zh_tw || '', dep: a.DepartureTime, arr: b.ArrivalTime });
+      });
+      rows.sort((x, y) => x.dep.localeCompare(y.dep));
+      $('appList').innerHTML = rows.length ? rows.map(r => {
+        const c = classify(r, route.from, route.to);
+        return `
+          <div class="train">
+            <div><div>${esc(r.no)} 次 · ${esc(r.type)}</div></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="times">${esc(r.dep)} → ${esc(r.arr)}</span>
+              <span class="tag ${c.cls}">${esc(c.text)}</span>
+            </div>
+          </div>`;
+      }).join('') : '<div class="empty">今天這條路線沒有班次。</div>';
+    } catch (e) {
+      $('appList').innerHTML = `<div class="empty">無法載入班次：${esc(e.message)}</div>`;
+    }
+  }
+  function fillRouteSelect() {
+    const routes = loadRoutes();
+    $('appRoute').innerHTML = routes.map((r, i) => `<option value="${i}">${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}</option>`).join('');
+  }
+
+  // ---------- 事件 ----------
+  $('actSave').addEventListener('click', () => {
+    const v = $('actDate').value;
+    if (!v) return;
+    data.activated = v;
+    saveData();
+    renderValid(); renderUsage();
+  });
+  $('actClear').addEventListener('click', () => {
+    data.activated = '';
+    $('actDate').value = '';
+    saveData();
+    renderValid(); renderUsage();
+  });
+  $('tAdd').addEventListener('click', () => {
+    const msg = $('tMsg');
+    const date = $('tDate').value;
+    const no = $('tNo').value.trim();
+    const from = $('tFrom').value;
+    const to = $('tTo').value;
+    msg.textContent = '';
+    if (!date) { msg.textContent = '請選日期。'; return; }
+    if (!no) { msg.textContent = '請輸入車次。'; return; }
+    if (from === to) { msg.textContent = '出發站和到達站不能相同。'; return; }
+    data.trips.push({ id: String(Date.now()), date, no, from, to, type: '' });
+    saveData();
+    $('tNo').value = '';
+    renderTrips(); renderUsage();
+  });
+  $('tripList').addEventListener('click', e => {
+    const b = e.target.closest('[data-id]');
+    if (!b) return;
+    data.trips = data.trips.filter(t => t.id !== b.dataset.id);
+    saveData();
+    renderTrips(); renderUsage();
+  });
+  $('appRoute').addEventListener('change', renderApplicable);
+
+  // ---------- 啟動 ----------
+  async function init() {
+    loadData();
+    const today = todayTaipei();
+    $('tDate').value = today;
+    $('actDate').value = data.activated || '';
+    try { await loadStations(); } catch (e) { /* 車站載入失敗時選單會是空的 */ }
+    const opts = stations.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    $('tFrom').innerHTML = opts;
+    $('tTo').innerHTML = opts;
+    if (stations.length > 1) $('tTo').selectedIndex = 1;
+    fillRouteSelect();
+    renderValid(); renderUsage(); renderTrips();
+    renderApplicable();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
