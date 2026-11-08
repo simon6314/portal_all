@@ -92,14 +92,7 @@
     <h2 id="h-fare">票價與試算</h2>
     <div class="row">
       <label class="sub grow">車種（全票單程）
-        <select id="fareType" class="fare-in" aria-label="車種">
-          <option value="區間">區間（53 元）</option>
-          <option value="區間快">區間快（53 元）</option>
-          <option value="莒光">莒光（64 元）</option>
-          <option value="推拉式自強">推拉式自強（83 元）</option>
-          <option value="自強3000">自強 3000（83 元）</option>
-          <option value="普悠瑪">普悠瑪（83 元）</option>
-        </select>
+        <select id="fareType" class="fare-in" aria-label="車種"></select>
       </label>
     </div>
     <div class="row">
@@ -110,7 +103,8 @@
       <label class="sub grow">Tpass 價格（元）<input id="passPrice" class="fare-in" type="number" min="0" inputmode="numeric" placeholder="請填，例如 1200"></label>
     </div>
     <div id="calcBox"></div>
-    <div class="note">票價來源：TDX 台鐵票價（2026-10-04 生效），全票單程。竹北 → 竹南 未另外查證，假設與竹南 → 竹北相同。可以手動修改數字。Tpass 價格請依你購買的版本填寫。沒有票價的記錄不會計入原價，會另外提示。</div>
+    <div id="fareNote" class="note"></div>
+    <div class="note">票價為全票單程。可以手動修改數字。Tpass 價格請依你購買的版本填寫。沒有票價的記錄不會計入原價，會另外提示。</div>
   </section>
 
   <section class="card" aria-labelledby="h-log">
@@ -170,6 +164,13 @@
     '自強3000': 83,
     '普悠瑪': 83
   };
+
+  // TDX 車種代碼對應名稱（票價用）
+  const TYPE_NAME = { 2: '普悠瑪', 3: '推拉式自強', 4: '莒光', 6: '區間', 10: '區間快', 11: '自強3000' };
+  const TYPE_ORDER = ['區間', '區間快', '莒光', '推拉式自強', '自強3000', '普悠瑪'];
+  // 每個方向抓到的票價表：{ '1250-1180': { 車種: 票價 }, ... }；抓不到時用上面的預設值
+  let fareMaps = {};
+  let fareSource = '離線預設值';
 
   let stations = [];
   let data = { activated: '', trips: [], fares: {}, passPrice: '' };
@@ -303,7 +304,56 @@
     const f = data.fares[`${t.from}-${t.to}`];
     return typeof f === 'number' && f >= 0 ? f : null;
   }
+  function fareLabel(type) {
+    const m = fareMaps['1250-1180'] || {};
+    const price = m[type] ?? FARE_TABLE[type];
+    return `${type}（${price} 元）`;
+  }
+  function buildFareOptions() {
+    const types = TYPE_ORDER.filter(t => fareMaps['1250-1180']?.[t] !== undefined || FARE_TABLE[t] !== undefined);
+    $('fareType').innerHTML = types.map(t => `<option value="${esc(t)}">${esc(fareLabel(t))}</option>`).join('');
+    $('fareNote').textContent = `票價來源：${fareSource}。全票單程，竹南 ↔ 竹北，順行。`;
+  }
+  // 從 Worker 的票價資料取全票單程（最短距離的直達票價）
+  function parseFares(body) {
+    const list = (body.ODFares || []).filter(x => Array.isArray(x.Fares));
+    if (!list.length) return null;
+    // 最短距離即直達（順行）；車種在外層 TrainType，價格在 Fares 裡
+    const minDist = Math.min(...list.map(x => x.TravelDistance || 0));
+    const map = {};
+    list.filter(x => (x.TravelDistance || 0) === minDist).forEach(x => {
+      const name = TYPE_NAME[x.TrainType];
+      const f = x.Fares.find(v => v.TicketType === 1 && v.FareClass === 1 && typeof v.Price === 'number');
+      if (name && f) map[name] = f.Price;
+    });
+    return Object.keys(map).length ? map : null;
+  }
+  async function loadFares() {
+    try {
+      const pairs = [['1250', '1180'], ['1180', '1250']];
+      const results = await Promise.all(pairs.map(async ([f, t]) => {
+        const res = await fetch(`${API}/tra/fare?from=${f}&to=${t}`);
+        if (!res.ok) throw new Error('fare');
+        const payload = await res.json();
+        return parseFares(payload.data || payload);
+      }));
+      if (results.every(Boolean)) {
+        fareMaps = { '1250-1180': results[0], '1180-1250': results[1] };
+        fareSource = 'TDX 台鐵票價（即時抓取）';
+        return;
+      }
+    } catch (e) { /* 抓不到就用預設值 */ }
+    fareMaps = {};
+    fareSource = '離線預設值（TDX 2026-10-04 版）';
+  }
+  function fareFor(key, type) {
+    const m = fareMaps[key];
+    if (m && m[type] !== undefined) return m[type];
+    return FARE_TABLE[type];
+  }
+
   function renderFare() {
+    if (!$('fareType').options.length) buildFareOptions();
     $('fareType').value = data.fareType || '區間';
     $('fareA').value = data.fares['1250-1180'] ?? '';
     $('fareB').value = data.fares['1180-1250'] ?? '';
@@ -341,9 +391,8 @@
   }
   $('fareType').addEventListener('change', e => {
     data.fareType = e.target.value;
-    const v = FARE_TABLE[e.target.value];
-    data.fares['1250-1180'] = v;
-    data.fares['1180-1250'] = v;
+    data.fares['1250-1180'] = fareFor('1250-1180', e.target.value);
+    data.fares['1180-1250'] = fareFor('1180-1250', e.target.value);
     saveData(); renderFare(); renderTrips();
   });
   $('fareA').addEventListener('change', e => setFare('1250-1180', e.target.value));
@@ -352,8 +401,8 @@
     if (data.fares['1250-1180'] === undefined && data.fares['1180-1250'] === undefined) {
       const t = data.fareType || '區間';
       data.fareType = t;
-      data.fares['1250-1180'] = FARE_TABLE[t];
-      data.fares['1180-1250'] = FARE_TABLE[t];
+      data.fares['1250-1180'] = fareFor('1250-1180', t);
+      data.fares['1180-1250'] = fareFor('1180-1250', t);
       saveData();
     }
   }
@@ -478,6 +527,8 @@
   // ---------- 啟動 ----------
   async function init() {
     loadData();
+    await loadFares();
+    buildFareOptions();
     applyDefaultFare();
     const today = todayTaipei();
     $('tDate').value = today;
