@@ -683,11 +683,23 @@
       .finally(() => renderTrains());
   });
 
+  // 只更新誤點資料（班次表當天不會變，不重抓以免打太多 TDX 請求）
+  async function refreshDelays() {
+    if (!trains.length || isFuture()) return;
+    const key = loadedKey;
+    try {
+      const delays = await fetchDelays();
+      if (key !== loadedKey) return;
+      trains.forEach(t => { t.delay = delays.has(t.no) ? delays.get(t.no) : undefined; });
+      renderTrains();
+    } catch (e) { /* 失敗就等下一次 */ }
+  }
+
   // 前景每 30 秒更新倒數、每 5 分鐘重抓；切到背景時停止，回到前景立即更新
   function startTimers() {
     stopTimers();
     t30 = setInterval(() => { if (trains.length) renderTrains(); }, 30000);
-    t5 = setInterval(() => loadTimetable(true), 5 * 60 * 1000);
+    t5 = setInterval(refreshDelays, 5 * 60 * 1000);
   }
   function stopTimers() {
     clearInterval(t30);
