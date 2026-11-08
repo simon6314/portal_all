@@ -106,7 +106,7 @@
       <select id="appRoute" class="grow" aria-label="路線"></select>
     </div>
     <div id="appList" style="margin-top:8px"></div>
-    <div class="note">標示依 Tpass 說明：台鐵適用「指定區間與車種」，區間、區間快標為「可搭（以官方為準）」；自強、莒光、普悠瑪、太魯閣等對號車標為「需確認」；起訖站不在竹竹苗（新竹市、新竹縣、苗栗縣）範圍的標為「超出範圍」。範圍以站號判斷，包含北湖到竹南，以及談文到三義的苗栗車站，邊界站請以官方為準。</div>
+    <div class="note">車種規則：區間、區間快、推拉式自強號標為「可搭」；普悠瑪、太魯閣、自強 3000 及其他自強號標為「不可搭」；莒光等其他車種標為「需確認」。起訖站不在竹竹苗（新竹市、新竹縣、苗栗縣）範圍的標為「超出範圍」。範圍以站號判斷，包含北湖到竹南，以及談文到三義的苗栗車站，邊界站請以官方為準。</div>
   </section>
 </div>
 
@@ -181,12 +181,15 @@
     const n = Number(id);
     return (n >= 1150 && n <= 1250) || (n >= 2110 && n <= 2190) || (n >= 3140 && n <= 3190);
   }
+  // 車種規則：區間、區間快、推拉式自強號可搭；普悠瑪、太魯閣、自強3000及其他自強號不可搭；其他車種需確認
   function classify(t, from, to) {
-    const regular = /^區間/.test(t.type || '');
     const range = inZone(from) && inZone(to);
     if (!range) return { cls: 'no', text: '超出範圍' };
-    if (regular) return { cls: 'ok', text: '可搭（以官方為準）' };
-    return { cls: 'ask', text: '需確認（對號車）' };
+    const type = t.type || '';
+    if (/^區間/.test(type)) return { cls: 'ok', text: '可搭' };
+    if (/自強/.test(type) && /推拉式/.test(type)) return { cls: 'ok', text: '可搭（推拉式自強）' };
+    if (/普悠瑪|太魯閣|自強/.test(type)) return { cls: 'no', text: '不可搭' };
+    return { cls: 'ask', text: '需確認（車種）' };
   }
 
   // ---------- 效期 ----------
