@@ -65,6 +65,15 @@ const CONFIG = {
       icon: "💰"
     },
     {
+      id: "personal_ledger",
+      title: "我的帳本",
+      url: "https://simon6314.github.io/personal-ledger/",
+      isPublic: false,
+      keywordHash: "f3d4193460774b1d0363025983f0f95bf2aee33f400de6e2569f4100c325869f", // SHA-256 hash of fox260801
+      description: "個人收支、轉帳與多帳戶記帳",
+      icon: "📒"
+    },
+    {
       id: "bill_notify",
       title: "帳單管理",
       url: "https://simon6314.github.io/bill_notify/",
