@@ -43,11 +43,11 @@
   .today { color: var(--sub); font-size: 0.85rem; }
   .updated { color: var(--sub); font-size: 0.78rem; margin: 0 0 12px; min-height: 1em; }
 
-  .routes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .routes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 12px; }
   .route-chip {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 4px; min-width: 0;
     background: var(--card); border: 1px solid var(--line); border-radius: 999px;
-    padding: 6px 6px 6px 14px; font-size: 0.9rem; color: var(--text); cursor: pointer;
+    padding: 6px 6px 6px 8px; font-size: 0.9rem; color: var(--text); cursor: pointer;
   }
   .route-chip.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .route-chip .del {
@@ -61,6 +61,7 @@
   }
   .route-chip .mv:hover:not(:disabled) { color: var(--accent); background: var(--line); }
   .route-chip .mv:disabled { opacity: 0.3; cursor: default; }
+  .route-chip .rn { flex: 1; min-width: 0; padding-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .add-card {
     background: var(--card); border: 1px solid var(--line); border-radius: 16px;
@@ -294,7 +295,7 @@
   function renderRoutes() {
     $('routes').innerHTML = routes.map((r, i) => `
       <span class="route-chip ${i === activeIndex ? 'active' : ''}" data-index="${i}" role="button" tabindex="0">
-        ${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}
+        <span class="rn">${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}</span>
         <button class="mv" data-mv="-1" data-i="${i}" type="button" aria-label="往前移" ${i === 0 ? 'disabled' : ''}>‹</button>
         <button class="mv" data-mv="1" data-i="${i}" type="button" aria-label="往後移" ${i === routes.length - 1 ? 'disabled' : ''}>›</button>
         <button class="del" data-del="${i}" type="button" aria-label="刪除此路線">×</button>
