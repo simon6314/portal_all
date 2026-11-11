@@ -153,6 +153,18 @@
   const KEY_TPASS = 'tpass_v1';
   const KEY_ROUTES = 'train_routes_v1';
   const KEY_STATIONS = 'train_stations_v1';
+  const KEY_FARES = 'tpass_fares_v1';
+  const FARE_TTL_MS = 30 * 24 * 3600 * 1000;
+  // 有逾時限制的 JSON 請求，避免慢的時候整個頁面卡住
+  async function fetchJson(url, ms = 6000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('http ' + res.status);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  }
   const DEFAULT_ROUTES = [
     { from: '1250', to: '1000' }, { from: '1000', to: '1250' },
     { from: '1250', to: '3300' }, { from: '3300', to: '1250' }
@@ -226,14 +238,13 @@
   }
   async function loadStations() {
     try {
-      const cached = JSON.parse(sessionStorage.getItem(KEY_STATIONS));
+      const cached = JSON.parse(localStorage.getItem(KEY_STATIONS));
       if (Array.isArray(cached) && cached.length) { stations = cached; return; }
     } catch (e) { /* ignore */ }
-    const res = await fetch(API + '/tra/stations');
-    const body = await res.json();
-    if (!res.ok || !Array.isArray(body.Stations)) throw new Error('無法取得車站資料');
+    const body = await fetchJson(API + '/tra/stations', 10000);
+    if (!Array.isArray(body.Stations)) throw new Error('無法取得車站資料');
     stations = body.Stations.map(s => ({ id: s.StationID, name: s.StationName.Zh_tw }));
-    try { sessionStorage.setItem(KEY_STATIONS, JSON.stringify(stations)); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(KEY_STATIONS, JSON.stringify(stations)); } catch (e) { /* ignore */ }
   }
 
   // 竹竹苗範圍（依站號判斷：北湖到竹南，以及談文到三義）
@@ -357,23 +368,34 @@
     });
     return Object.keys(map).length ? map : null;
   }
+  // 先用本機快取的票價（上次抓到的），再背景更新
+  function loadCachedFares() {
+    try {
+      const c = JSON.parse(localStorage.getItem(KEY_FARES));
+      if (c && c.maps && Date.now() - c.ts < FARE_TTL_MS) {
+        fareMaps = c.maps;
+        fareSource = c.source;
+      }
+    } catch (e) { /* ignore */ }
+  }
   async function loadFares() {
     try {
       const pairs = [['1250', '1180'], ['1180', '1250']];
       const results = await Promise.all(pairs.map(async ([f, t]) => {
-        const res = await fetch(`${API}/tra/fare?from=${f}&to=${t}`);
-        if (!res.ok) throw new Error('fare');
-        const payload = await res.json();
+        const payload = await fetchJson(`${API}/tra/fare?from=${f}&to=${t}`, 8000);
         return parseFares(payload.data || payload);
       }));
       if (results.every(Boolean)) {
         fareMaps = { '1250-1180': results[0], '1180-1250': results[1] };
         fareSource = 'TDX 台鐵票價（即時抓取）';
+        try { localStorage.setItem(KEY_FARES, JSON.stringify({ ts: Date.now(), maps: fareMaps, source: fareSource })); } catch (e) { /* ignore */ }
         return;
       }
-    } catch (e) { /* 抓不到就用預設值 */ }
-    fareMaps = {};
-    fareSource = '離線預設值（TDX 2026-10-04 版）';
+    } catch (e) { /* 抓不到就沿用快取或預設值 */ }
+    if (!Object.keys(fareMaps).length) {
+      fareMaps = {};
+      fareSource = '離線預設值（TDX 2026-10-04 版）';
+    }
   }
   function fareFor(key, type) {
     const m = fareMaps[key];
@@ -500,10 +522,7 @@
     if (!route) { $('appList').innerHTML = '<div class="empty">請先到火車時刻頁新增路線。</div>'; return; }
     $('appList').innerHTML = '<div class="empty">載入中…</div>';
     try {
-      const date = todayTaipei();
-      const res = await fetch(`${API}/tra/timetable?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&date=${date}`);
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || '載入失敗');
+      const body = await getTimetable(route, todayTaipei());
       const rows = [];
       (body.TrainTimetables || []).forEach(t => {
         const stops = t.StopTimes || [];
@@ -528,6 +547,38 @@
     } catch (e) {
       $('appList').innerHTML = `<div class="empty">無法載入班次：${esc(e.message)}</div>`;
     }
+  }
+  // 班次表：同一條路線、同一天只向 API 要一次，結果存在本機（6 小時內直接用），並避免重複請求
+  const KEY_TT = 'tpass_tt_v1';
+  const TT_TTL_MS = 6 * 3600 * 1000;
+  const ttInflight = new Map();
+  function readTt(key) {
+    try {
+      const all = JSON.parse(localStorage.getItem(KEY_TT) || '{}');
+      const c = all[key];
+      return c && Date.now() - c.ts < TT_TTL_MS ? c.body : null;
+    } catch (e) { return null; }
+  }
+  function writeTt(key, body) {
+    try {
+      const all = JSON.parse(localStorage.getItem(KEY_TT) || '{}');
+      Object.keys(all).forEach(k => { if (Date.now() - all[k].ts > TT_TTL_MS) delete all[k]; });
+      all[key] = { ts: Date.now(), body };
+      localStorage.setItem(KEY_TT, JSON.stringify(all));
+    } catch (e) { /* ignore */ }
+  }
+  function getTimetable(route, date) {
+    const key = `${route.from}-${route.to}-${date}`;
+    const hit = readTt(key);
+    if (hit) return Promise.resolve(hit);
+    if (ttInflight.has(key)) return ttInflight.get(key);
+    const p = (async () => {
+      const body = await fetchJson(`${API}/tra/timetable?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&date=${date}`, 20000);
+      writeTt(key, body);
+      return body;
+    })().finally(() => ttInflight.delete(key));
+    ttInflight.set(key, p);
+    return p;
   }
   function fillRouteSelect() {
     const routes = loadRoutes();
@@ -600,19 +651,29 @@
   $('appRoute').addEventListener('change', renderApplicable);
 
   // ---------- 啟動 ----------
-  async function init() {
-    loadData();
-    await loadFares();
-    buildFareOptions();
-    applyDefaultFare();
-    $('tDate').value = todayTaipei();
-    fillPeriodForm();
-    try { await loadStations(); } catch (e) { /* 車站載入失敗時選單會是空的 */ }
+  function fillStationSelects() {
     const opts = stations.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
     $('tFrom').innerHTML = opts;
     $('tTo').innerHTML = opts;
     if (stations.length > 1) $('tTo').selectedIndex = 1;
+  }
+  async function init() {
+    loadData();
+    loadCachedFares();                 // 先用快取，不等網路
+    try { const c = JSON.parse(localStorage.getItem(KEY_STATIONS)); if (Array.isArray(c) && c.length) stations = c; } catch (e) { /* ignore */ }
+    buildFareOptions();
+    applyDefaultFare();
+    $('tDate').value = todayTaipei();
+    fillPeriodForm();
+    fillStationSelects();
     fillRouteSelect();
+    renderAll();                       // 先把本機資料畫出來
+    renderApplicable();
+    // 背景更新票價與車站（同時進行，互不等待）
+    const [, stationRes] = await Promise.allSettled([loadFares(), loadStations()]);
+    buildFareOptions();
+    applyDefaultFare();
+    if (stationRes.status === 'fulfilled') { fillStationSelects(); fillRouteSelect(); }
     renderAll();
     renderApplicable();
   }
