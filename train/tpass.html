@@ -138,12 +138,17 @@
   </section>
 
   <section class="card" aria-labelledby="h-app">
-    <h2 id="h-app">今天班次的 Tpass 適用標示</h2>
+    <h2 id="h-app">Tpass 適用查詢</h2>
+    <h3 class="sub">我的最愛</h3>
+    <div id="appList"></div>
+    <h3 class="sub" style="margin-top:12px">手動輸入</h3>
     <div class="row">
-      <select id="appRoute" class="grow" aria-label="路線"></select>
+      <select id="mFrom" class="grow" aria-label="起點"></select>
+      <span aria-hidden="true">→</span>
+      <select id="mTo" class="grow" aria-label="終點"></select>
     </div>
-    <div id="appList" style="margin-top:8px"></div>
-    <div class="note">車種規則：區間、區間快、推拉式自強號標為「可搭」；普悠瑪、太魯閣、自強 3000 及其他自強號標為「不可搭」；莒光等其他車種標為「需確認」。起訖站不在竹竹苗（新竹市、新竹縣、苗栗縣）範圍的標為「超出範圍」。範圍以站號判斷，包含北湖到竹南，以及談文到三義的苗栗車站，邊界站請以官方為準。</div>
+    <div id="mResult" style="margin-top:8px"></div>
+    <div class="note">起訖站都在竹竹苗（新竹市、新竹縣、苗栗縣）範圍內，才算適用。範圍以站號判斷，包含北湖到竹南，以及談文到三義的苗栗車站，邊界站請以官方為準。範圍內的區間、區間快、推拉式自強號可搭；普悠瑪、太魯閣、自強 3000 及其他自強號不可搭，實際班次車種請看官方時刻表。</div>
   </section>
 </div>
 
@@ -513,76 +518,30 @@
     renderAll();
   }
 
-  // ---------- 今天班次適用標示 ----------
-  async function renderApplicable() {
+  // ---------- Tpass 適用查詢（依起訖站範圍判斷，不需要班次資料） ----------
+  function applicability(from, to) {
+    if (!inZone(from) || !inZone(to)) return { cls: 'no', text: '不適用（超出範圍）' };
+    return { cls: 'ok', text: '適用' };
+  }
+  function appTag(from, to) {
+    const a = applicability(from, to);
+    return `<span class="tag ${a.cls}">${esc(a.text)}</span>`;
+  }
+  function renderApplicable() {
     const routes = loadRoutes();
-    const sel = $('appRoute');
-    const idx = Math.min(Number(sel.value || 0), routes.length - 1);
-    const route = routes[idx];
-    if (!route) { $('appList').innerHTML = '<div class="empty">請先到火車時刻頁新增路線。</div>'; return; }
-    $('appList').innerHTML = '<div class="empty">載入中…</div>';
-    try {
-      const body = await getTimetable(route, todayTaipei());
-      const rows = [];
-      (body.TrainTimetables || []).forEach(t => {
-        const stops = t.StopTimes || [];
-        const a = stops.find(s => s.StationID === route.from);
-        const b = stops.find(s => s.StationID === route.to);
-        if (!a || !b || a.StopSequence >= b.StopSequence) return;
-        const info = t.TrainInfo || {};
-        rows.push({ no: info.TrainNo || '', type: (info.TrainTypeName || {}).Zh_tw || '', dep: a.DepartureTime, arr: b.ArrivalTime });
-      });
-      rows.sort((x, y) => x.dep.localeCompare(y.dep));
-      $('appList').innerHTML = rows.length ? rows.map(r => {
-        const c = classify(r, route.from, route.to);
-        return `
-          <div class="train">
-            <div><div>${esc(r.no)} 次 · ${esc(r.type)}</div></div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span class="times">${esc(r.dep)} → ${esc(r.arr)}</span>
-              <span class="tag ${c.cls}">${esc(c.text)}</span>
-            </div>
-          </div>`;
-      }).join('') : '<div class="empty">今天這條路線沒有班次。</div>';
-    } catch (e) {
-      $('appList').innerHTML = `<div class="empty">無法載入班次：${esc(e.message)}</div>`;
-    }
+    $('appList').innerHTML = routes.length
+      ? routes.map(r => `<div class="train"><span>${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}</span>${appTag(r.from, r.to)}</div>`).join('')
+      : '<div class="empty">還沒有最愛路線，請先到火車時刻頁新增。</div>';
+    renderManual();
   }
-  // 班次表：同一條路線、同一天只向 API 要一次，結果存在本機（6 小時內直接用），並避免重複請求
-  const KEY_TT = 'tpass_tt_v1';
-  const TT_TTL_MS = 6 * 3600 * 1000;
-  const ttInflight = new Map();
-  function readTt(key) {
-    try {
-      const all = JSON.parse(localStorage.getItem(KEY_TT) || '{}');
-      const c = all[key];
-      return c && Date.now() - c.ts < TT_TTL_MS ? c.body : null;
-    } catch (e) { return null; }
-  }
-  function writeTt(key, body) {
-    try {
-      const all = JSON.parse(localStorage.getItem(KEY_TT) || '{}');
-      Object.keys(all).forEach(k => { if (Date.now() - all[k].ts > TT_TTL_MS) delete all[k]; });
-      all[key] = { ts: Date.now(), body };
-      localStorage.setItem(KEY_TT, JSON.stringify(all));
-    } catch (e) { /* ignore */ }
-  }
-  function getTimetable(route, date) {
-    const key = `${route.from}-${route.to}-${date}`;
-    const hit = readTt(key);
-    if (hit) return Promise.resolve(hit);
-    if (ttInflight.has(key)) return ttInflight.get(key);
-    const p = (async () => {
-      const body = await fetchJson(`${API}/tra/timetable?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&date=${date}`, 20000);
-      writeTt(key, body);
-      return body;
-    })().finally(() => ttInflight.delete(key));
-    ttInflight.set(key, p);
-    return p;
+  function renderManual() {
+    const f = $('mFrom').value, t = $('mTo').value;
+    if (!f || !t) { $('mResult').innerHTML = ''; return; }
+    if (f === t) { $('mResult').innerHTML = '<div class="empty">起點和終點相同</div>'; return; }
+    $('mResult').innerHTML = `<div class="train"><span>${esc(nameOf(f))} → ${esc(nameOf(t))}</span>${appTag(f, t)}</div>`;
   }
   function fillRouteSelect() {
     const routes = loadRoutes();
-    $('appRoute').innerHTML = routes.map((r, i) => `<option value="${i}">${esc(nameOf(r.from))} → ${esc(nameOf(r.to))}</option>`).join('');
   }
 
   function renderAll() {
@@ -648,7 +607,8 @@
     saveData();
     renderAll();
   });
-  $('appRoute').addEventListener('change', renderApplicable);
+  $('mFrom').addEventListener('change', renderManual);
+  $('mTo').addEventListener('change', renderManual);
 
   // ---------- 啟動 ----------
   function fillStationSelects() {
@@ -656,6 +616,10 @@
     $('tFrom').innerHTML = opts;
     $('tTo').innerHTML = opts;
     if (stations.length > 1) $('tTo').selectedIndex = 1;
+    const keepF = $('mFrom').value, keepT = $('mTo').value;
+    $('mFrom').innerHTML = opts;
+    $('mTo').innerHTML = opts;
+    if (stations.length > 1) { $('mFrom').value = keepF || stations[0].id; $('mTo').value = keepT || stations[1].id; }
   }
   async function init() {
     loadData();
