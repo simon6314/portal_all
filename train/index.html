@@ -207,6 +207,14 @@
   let selectedDate = '';    // 目前選取的日期（YYYY-MM-DD，台灣時間）
   let trains = [];          // 目前路線、日期的班次
   let loadedKey = '';       // 目前班次對應的路線 + 日期
+  let loadedAt = 0;         // 上次成功抓班次的時間（毫秒）
+  let backoffUntil = 0;     // 被 TDX 限流（429）後，暫停自動抓取到這個時間
+  const TT_FRESH_MS = 10 * 60 * 1000;   // 班次資料 10 分鐘內視為新鮮，不重抓
+  const BACKOFF_MS = 15 * 60 * 1000;    // 遇到 429 停止自動更新 15 分鐘
+  const inBackoff = () => Date.now() < backoffUntil;
+  function noteRateLimit(res) {
+    if (res && res.status === 429) backoffUntil = Date.now() + BACKOFF_MS;
+  }
   let typeFilter = new Set();   // 車種篩選，空集合 = 全部
   let expanded = new Set();     // 展開停靠站的班次
   let t30 = null, t5 = null;    // 計時器
@@ -361,6 +369,7 @@
 
   async function fetchTrains(route, date) {
     const res = await fetch(`${API}/tra/timetable?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&date=${date}`);
+    noteRateLimit(res);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '載入時刻表失敗');
     const list = [];
@@ -398,9 +407,11 @@
   // 即時誤點：所有運行中列車（不分車站），用車次對應；同車次取最新回報
   async function fetchDelays() {
     const map = new Map();
+    if (inBackoff()) return null;          // 限流期間不打 API，呼叫端保留舊資料
     try {
       const res = await fetch(`${API}/tra/delays`);
-      if (!res.ok) return map;
+      noteRateLimit(res);
+      if (!res.ok) return res.status === 429 ? null : map;   // 429 回傳 null，保留舊的誤點資料
       const payload = await res.json();
       const rows = Array.isArray(payload.data) ? payload.data : [];
       const latest = new Map();
@@ -450,7 +461,8 @@
     if (dayDiff() < 0) selectedDate = dateFor(0); // 跨日後避免停在過去的日期
     const date = selectedDate;
     const key = `${route.from}-${route.to}-${date}`;
-    if (!force && key === loadedKey) { renderTrains(); return; }
+    if (!force && key === loadedKey && Date.now() - loadedAt < TT_FRESH_MS) { renderTrains(); return; }
+    if (inBackoff() && key === loadedKey) { renderTrains(); return; }   // 限流中：只顯示現有資料
     // 有本機快取就先顯示，再背景更新
     const cached = readTtCache(key);
     if (cached) {
@@ -467,13 +479,18 @@
         fetchTrains(route, date),
         isFuture() ? Promise.resolve(new Map()) : fetchDelays()
       ]);
+      const keepDelays = delays === null;   // 限流中沒有新的誤點資料，沿用既有的
       // 載入期間若已切換路線或日期，丟棄這次結果
       const cur = routes[activeIndex];
       if (!cur || `${cur.from}-${cur.to}-${selectedDate}` !== key) return;
-      list.forEach(t => { t.delay = delays.has(t.no) ? delays.get(t.no) : undefined; });
+      list.forEach(t => {
+        if (keepDelays) { const old = trains.find(o => o.no === t.no); t.delay = old ? old.delay : undefined; }
+        else t.delay = delays.has(t.no) ? delays.get(t.no) : undefined;
+      });
       const at = Date.now();
       trains = list;
       loadedKey = key;
+      loadedAt = at;
       writeTtCache(key, { at, trains: list });
       setUpdated(at);
       $('status').hidden = true;
@@ -690,7 +707,7 @@
     const key = loadedKey;
     try {
       const delays = await fetchDelays();
-      if (key !== loadedKey) return;
+      if (delays === null || key !== loadedKey) return;
       trains.forEach(t => { t.delay = delays.has(t.no) ? delays.get(t.no) : undefined; });
       renderTrains();
     } catch (e) { /* 失敗就等下一次 */ }
@@ -709,7 +726,8 @@
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { stopTimers(); return; }
-    loadTimetable(true);
+    // 只有資料過期才重抓，切換 App 不會每次都打 TDX
+    loadTimetable(Date.now() - loadedAt >= TT_FRESH_MS);
     startTimers();
   });
 
