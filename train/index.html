@@ -215,6 +215,7 @@
   let loadedAt = 0;         // 上次成功抓班次的時間（毫秒）
   let backoffUntil = 0;     // 被 TDX 限流（429）後，暫停自動抓取到這個時間
   const TT_FRESH_MS = 10 * 60 * 1000;   // 班次資料 10 分鐘內視為新鮮，不重抓
+  const TT_CACHE_MS = 3 * 60 * 60 * 1000;   // 手機裡存的班次表 3 小時內直接用（當天班次幾乎不會變），只更新誤點
   const BACKOFF_MS = 15 * 60 * 1000;    // 遇到 429 停止自動更新 15 分鐘
   const inBackoff = () => Date.now() < backoffUntil;
   function noteRateLimit(res) {
@@ -286,14 +287,14 @@
 
   async function loadStations() {
     try {
-      const cached = JSON.parse(sessionStorage.getItem(KEY_STATIONS));
+      const cached = JSON.parse(localStorage.getItem(KEY_STATIONS) || sessionStorage.getItem(KEY_STATIONS));
       if (Array.isArray(cached) && cached.length) { stations = cached; return; }
     } catch (e) { /* ignore */ }
     const res = await fetch(API + '/tra/stations');
     const data = await res.json();
     if (!res.ok || !Array.isArray(data.Stations)) throw new Error(data.error || '無法取得車站資料');
     stations = data.Stations.map(s => ({ id: s.StationID, name: s.StationName.Zh_tw }));
-    try { sessionStorage.setItem(KEY_STATIONS, JSON.stringify(stations)); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(KEY_STATIONS, JSON.stringify(stations)); } catch (e) { /* ignore */ }
   }
 
   function fillStationSelects() {
@@ -346,7 +347,7 @@
     activeIndex = routes.length - 1;
     resetView();
     renderRoutes();
-    loadTimetable(true);
+    loadTimetable(false);
   }
 
   function deleteRoute(i) {
@@ -355,7 +356,7 @@
     if (activeIndex >= routes.length) activeIndex = Math.max(0, routes.length - 1);
     resetView();
     renderRoutes();
-    if (routes.length) loadTimetable(true);
+    if (routes.length) loadTimetable(false);
     else showStatus('請先新增一條路線。');
   }
 
@@ -478,6 +479,17 @@
     if (inBackoff() && key === loadedKey) { renderTrains(); return; }   // 限流中：只顯示現有資料
     // 有本機快取就先顯示，再背景更新
     const cached = readTtCache(key);
+    if (cached && !force && Date.now() - cached.at < TT_CACHE_MS) {
+      // 存的班次表還很新：不抓班次，只補誤點（少打一次 TDX）
+      trains = cached.trains;
+      loadedKey = key;
+      loadedAt = cached.at;
+      setUpdated(cached.at);
+      $('status').hidden = true;
+      renderTrains();
+      if (!isFuture()) refreshDelays();
+      return;
+    }
     if (cached) {
       trains = cached.trains;
       loadedKey = key;
@@ -488,10 +500,8 @@
       showStatus('載入班次中…');
     }
     try {
-      const [list, delays] = await Promise.all([
-        fetchTrains(route, date),
-        isFuture() ? Promise.resolve(new Map()) : fetchDelays()
-      ]);
+      const list = await fetchTrains(route, date);
+      const delays = isFuture() ? new Map() : await fetchDelays();
       const keepDelays = delays === null;   // 限流中沒有新的誤點資料，沿用既有的
       // 載入期間若已切換路線或日期，丟棄這次結果
       const cur = routes[activeIndex];
@@ -680,7 +690,7 @@
     const max = dateFor(MAX_DAYS_AHEAD);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
     selectedDate = dateStr < min ? min : dateStr > max ? max : dateStr;
-    loadTimetable(true);
+    loadTimetable(false);
   }
   function shiftDate(n) {
     const [y, m, d] = selectedDate.split('-').map(Number);
@@ -745,7 +755,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { stopTimers(); return; }
     // 只有資料過期才重抓，切換 App 不會每次都打 TDX
-    loadTimetable(Date.now() - loadedAt >= TT_FRESH_MS);
+    loadTimetable(false);   // 班次表有快取就只更新誤點
     startTimers();
   });
 
@@ -778,8 +788,8 @@
     const stationsReady = loadStations()
       .then(() => { fillStationSelects(); renderRoutes(); })
       .catch(err => { $('msg').textContent = '車站清單載入失敗：' + err.message; });
-    await loadTimetable(true);
-    await stationsReady;
+    await stationsReady;            // 車站清單多半已存在手機裡，不會多打 API
+    await loadTimetable(false);
     startTimers();
   }
   init();
