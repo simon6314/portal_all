@@ -41,7 +41,12 @@
   .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
   .top h1 { margin: 0; font-size: 1.35rem; }
   .today { color: var(--sub); font-size: 0.85rem; }
-  .updated { color: var(--sub); font-size: 0.78rem; margin: 0 0 12px; min-height: 1em; }
+  .updated-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; }
+  .updated { color: var(--sub); font-size: 0.78rem; margin: 0; min-height: 1em; }
+  .updated .warn { color: #d9534f; }
+  .refetch { flex: none; border: 1px solid var(--line, #ddd); background: transparent; color: inherit; border-radius: 999px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer; }
+  .refetch:disabled { opacity: .5; cursor: default; }
+  .status .refetch { margin-top: 12px; font-size: 0.9rem; padding: 6px 16px; }
 
   .routes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 12px; }
   .route-chip {
@@ -159,7 +164,7 @@
     <span id="today" class="today"></span>
   </header>
   <div style="margin:-6px 0 10px"><a href="tpass.html?v=2026111702" style="color:var(--accent);font-size:0.85rem;text-decoration:none">Tpass 狀態 →</a></div>
-  <div id="updated" class="updated"></div>
+  <div class="updated-row"><div id="updated" class="updated"></div><button id="refetch" class="refetch" type="button" title="重新抓取班次和誤點資料">↻ 重新抓取</button></div>
 
   <section id="routes" class="routes" aria-label="路線"></section>
 
@@ -355,9 +360,17 @@
   }
 
   // ---------- 班次 ----------
-  function showStatus(text) {
+  // 429 = TDX 說請求太頻繁（包含取得 token 時被擋）
+  const isRateLimit = msg => /429|too many|rate/i.test(String(msg));
+  function showStatus(text, retry) {
     $('status').hidden = false;
     $('status').textContent = text;
+    if (retry) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'refetch'; b.textContent = '↻ 重新抓取';
+      b.addEventListener('click', refetch);
+      $('status').append(document.createElement('br'), b);
+    }
     $('next').hidden = true;
     $('types').innerHTML = '';
     $('list').innerHTML = '';
@@ -499,7 +512,12 @@
       if (!cached) {
         trains = [];
         loadedKey = '';
-        showStatus('無法載入班次：' + err.message);
+        showStatus(isRateLimit(err.message)
+          ? 'TDX 暫時限流（429）：請求太頻繁了，稍等一兩分鐘再按「重新抓取」。'
+          : '無法載入班次：' + err.message, true);
+      } else {
+        // 有舊資料就繼續顯示，只在更新時間旁提示
+        $('updated').innerHTML = `資料更新於 ${taipeiClock(new Date(cached.at))}　<span class="warn">更新失敗${isRateLimit(err.message) ? '（429 限流）' : ''}，稍後可按重新抓取</span>`;
       }
     }
   }
@@ -730,6 +748,25 @@
     loadTimetable(Date.now() - loadedAt >= TT_FRESH_MS);
     startTimers();
   });
+
+  // 手動重新抓取：跳過限流等待，班次和誤點都重抓；按完 8 秒內不能再按，避免又被限流
+  async function refetch() {
+    const btns = [$('refetch'), ...document.querySelectorAll('#status .refetch')];
+    if ($('refetch').disabled) return;
+    btns.forEach(b => { b.disabled = true; b.textContent = '抓取中…'; });
+    backoffUntil = 0;
+    try {
+      // 車站清單之前沒抓到（也可能是 429）就一起重抓
+      const st = stations.length ? null : loadStations()
+        .then(() => { fillStationSelects(); renderRoutes(); $('msg').textContent = ''; })
+        .catch(err => { $('msg').textContent = '車站清單載入失敗：' + err.message; });
+      await Promise.all([loadTimetable(true), st]);
+    } finally {
+      $('refetch').textContent = '↻ 重新抓取';
+      setTimeout(() => { $('refetch').disabled = false; }, 8000);
+    }
+  }
+  $('refetch').addEventListener('click', refetch);
 
   // ---------- 啟動 ----------
   async function init() {
