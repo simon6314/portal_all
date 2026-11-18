@@ -766,11 +766,16 @@
     btns.forEach(b => { b.disabled = true; b.textContent = '抓取中…'; });
     backoffUntil = 0;
     try {
-      // 車站清單之前沒抓到（也可能是 429）就一起重抓
-      const st = stations.length ? null : loadStations()
-        .then(() => { fillStationSelects(); renderRoutes(); $('msg').textContent = ''; })
-        .catch(err => { $('msg').textContent = '車站清單載入失敗：' + err.message; });
-      await Promise.all([loadTimetable(true), st]);
+      // 依序請求，不同時打 TDX：先補車站清單（若之前沒抓到），再重抓班次與誤點
+      if (!stations.length) {
+        try {
+          await loadStations();
+          fillStationSelects(); renderRoutes(); $('msg').textContent = '';
+        } catch (err) {
+          $('msg').textContent = '車站清單載入失敗：' + err.message;
+        }
+      }
+      await loadTimetable(true);
     } finally {
       $('refetch').textContent = '↻ 重新抓取';
       setTimeout(() => { $('refetch').disabled = false; }, 8000);
