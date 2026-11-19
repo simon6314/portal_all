@@ -134,6 +134,10 @@
       <button id="tAdd" class="btn ghost" type="button">新增其他路線</button>
       <span id="tMsg" class="sub"></span>
     </div>
+    <div class="row" style="margin-top:12px">
+      <label class="sub grow">檢視期數 <select id="tripPeriod" class="fare-in" aria-label="檢視期數"></select></label>
+    </div>
+    <div id="tripSummary" class="sub"></div>
     <div id="tripList" style="margin-top:10px"></div>
   </section>
 
@@ -484,8 +488,38 @@
   }
 
   // ---------- 搭乘記錄 ----------
+  // 檢視期數：預設目前這一期，只列出該期的搭乘記錄
+  let viewPeriodId = null;
+  function viewedPeriod() {
+    return data.periods.find(p => p.id === viewPeriodId) || currentPeriod();
+  }
+  function fillTripPeriodSelect() {
+    const sel = $('tripPeriod');
+    const cur = currentPeriod();
+    const vp = viewedPeriod();
+    if (!data.periods.length) {
+      sel.innerHTML = '<option>尚無期數</option>';
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    sel.innerHTML = [...data.periods].reverse().map(p => {
+      const tag = cur && p.id === cur.id ? '（本期）' : '';
+      return `<option value="${esc(p.id)}">${esc(fmtMD(p.start))}–${esc(fmtMD(periodEnd(p)))}${tag}</option>`;
+    }).join('');
+    if (vp) sel.value = vp.id;
+    viewPeriodId = vp ? vp.id : null;
+  }
   function renderTrips() {
-    const list = [...data.trips].sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
+    fillTripPeriodSelect();
+    const p = viewedPeriod();
+    if (!p) {
+      $('tripSummary').textContent = '';
+      $('tripList').innerHTML = '<div class="empty">還沒有期數，請先開始第一期。</div>';
+      return;
+    }
+    const list = tripsIn(p.start, periodEnd(p)).sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
+    $('tripSummary').textContent = `${fmtMD(p.start)}–${fmtMD(periodEnd(p))} 共 ${list.length} 趟`;
     $('tripList').innerHTML = list.length ? list.map(t => {
       const c = inZone(t.from) && inZone(t.to)
         ? { cls: 'ok', text: '範圍內' }
@@ -502,8 +536,12 @@
             <button class="del" type="button" data-id="${esc(t.id)}" aria-label="刪除">×</button>
           </div>
         </div>`;
-    }).join('') : '<div class="empty">還沒有搭乘記錄。</div>';
+    }).join('') : '<div class="empty">這一期還沒有搭乘記錄。</div>';
   }
+  $('tripPeriod').addEventListener('change', e => {
+    viewPeriodId = e.target.value;
+    renderTrips();
+  });
   function addTrip(from, to, fare) {
     const msg = $('tMsg');
     const date = $('tDate').value;
