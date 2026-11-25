@@ -415,7 +415,18 @@
       });
     });
     list.sort((x, y) => x.depMin - y.depMin);
-    return list;
+    return uniqTrains(list);
+  }
+
+  // 同一車次只留一筆（TDX 偶爾會回傳重複的班次）
+  function uniqTrains(list) {
+    const seen = new Set();
+    return (list || []).filter(t => {
+      const k = t.no || `${t.dep}-${t.arr}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   }
 
   // 即時誤點：所有運行中列車（不分車站），用車次對應；同車次取最新回報
@@ -481,7 +492,7 @@
     const cached = readTtCache(key);
     if (cached && !force && Date.now() - cached.at < TT_CACHE_MS) {
       // 存的班次表還很新：不抓班次，只補誤點（少打一次 TDX）
-      trains = cached.trains;
+      trains = uniqTrains(cached.trains);
       loadedKey = key;
       loadedAt = cached.at;
       setUpdated(cached.at);
@@ -491,7 +502,7 @@
       return;
     }
     if (cached) {
-      trains = cached.trains;
+      trains = uniqTrains(cached.trains);
       loadedKey = key;
       setUpdated(cached.at);
       $('status').hidden = true;
